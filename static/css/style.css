@@ -1,3 +1,7 @@
+/* ----------------------------------------------------------
+1. VARIÁVEIS
+---------------------------------------------------------- */
+
 :root {
   /* Paleta: base institucional escura + acento ciano de "varredura óptica" */
   --color-bg: #0b1220;
@@ -9,19 +13,44 @@
   --color-text-secondary: #9aa8c0;
   --color-text-muted: #62708a;
 
+  /* Acento principal do sistema (usado em ações e no estado "analisando") */
   --color-accent: #34d1c4;
   --color-accent-soft: rgba(52, 209, 196, 0.14);
+
+  /* Cores semânticas dos estados de autenticação.
+Reaproveitadas tanto no painel de status quanto nos badges. */
+  --color-neutral: #62708a;
+  /* aguardando */
+  --color-info: #4d8dff;
+  /* identificado */
   --color-ok: #34d1a0;
-  --color-pending: #d1a634;
+  /* autorizado */
   --color-danger: #e0566b;
+  /* negado */
+  --color-warning: #d1a634;
+  /* erro / pendente */
 
   --font-body: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 
+  /* Escala de espaçamento — usar sempre estes valores em vez de números soltos */
+  --space-xs: 6px;
+  --space-sm: 12px;
+  --space-md: 20px;
+  --space-lg: 32px;
+  --space-xl: 48px;
+
+  --radius-sm: 6px;
   --radius: 10px;
+  --radius-pill: 999px;
+
   --transition: 180ms ease;
 }
 
+
+/* ----------------------------------------------------------
+2. RESET BÁSICO
+---------------------------------------------------------- */
 * {
   box-sizing: border-box;
 }
@@ -40,8 +69,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Linha de varredura sutil, reforça a metáfora de visão computacional
-   sem recorrer a animações exageradas. */
+h1,
+h2,
+h3,
+p,
+ul {
+  margin: 0;
+}
+
+
+/* ----------------------------------------------------------
+3. LAYOUT COMUM (topbar, footer, container de página)
+---------------------------------------------------------- */
+
+/* Linha de varredura sutil no topo da tela — reforça a metáfora
+de visão computacional sem recorrer a animações exageradas. */
 .scanline {
   position: fixed;
   top: 0;
@@ -80,20 +122,18 @@ body {
   }
 }
 
-/* ---------- Topbar ---------- */
-
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 48px;
+  padding: var(--space-md) var(--space-xl);
   border-bottom: 1px solid var(--color-border-soft);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-sm);
 }
 
 .brand-mark {
@@ -111,7 +151,7 @@ body {
 .topbar-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-sm);
   color: var(--color-text-muted);
   font-size: 13px;
 }
@@ -120,57 +160,38 @@ body {
   color: var(--color-border);
 }
 
-/* ---------- Hero / Página inicial ---------- */
-
-.hero {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 48px;
+/* Container principal de conteúdo de cada página.
+Páginas futuras (authentication.html, access_granted.html, etc.)
+colocam seu conteúdo dentro do {% block content %} do base.html,
+que é renderizado aqui dentro de <main class="page"> . */
+.page {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 72px 48px;
-  align-items: start;
+  padding: var(--space-xl);
 }
 
-.hero-eyebrow {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-accent);
-  margin: 0 0 18px;
+.footer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-xl) 40px;
 }
 
-.hero-title {
-  font-size: 56px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  margin: 0 0 10px;
+.footer p {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border-soft);
+  padding-top: var(--space-md);
+  max-width: 720px;
 }
 
-.hero-subtitle {
-  font-size: 19px;
-  color: var(--color-text-secondary);
-  margin: 0 0 24px;
-}
 
-.hero-description {
-  font-size: 15px;
-  color: var(--color-text-secondary);
-  max-width: 560px;
-  margin: 0 0 36px;
-}
+/* ----------------------------------------------------------
+  4. COMPONENTES REUTILIZÁVEIS
+  ---------------------------------------------------------- */
 
-.hero-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.btn-primary {
-  background: var(--color-accent);
-  color: #06201d;
+/* --- Botões --- */
+.btn {
+  display: inline-block;
   border: none;
   border-radius: var(--radius);
   padding: 14px 28px;
@@ -181,6 +202,11 @@ body {
   transition: opacity var(--transition), transform var(--transition);
 }
 
+.btn-primary {
+  background: var(--color-accent);
+  color: #06201d;
+}
+
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
 }
@@ -189,34 +215,42 @@ body {
   background: var(--color-border);
   color: var(--color-text-muted);
   cursor: not-allowed;
+  transform: none;
 }
 
-.hero-hint {
-  font-size: 12.5px;
-  color: var(--color-text-muted);
+.btn-secondary {
+  background: transparent;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
 }
 
-/* ---------- Painel de status ---------- */
+.btn-secondary:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
 
-.hero-panel {
+/* --- Card genérico ---
+  Usado no painel de status da home e reaproveitável no painel
+  de autenticação (Fase 3), no cadastro (Fase 6), etc. */
+.card {
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 28px;
 }
 
-.panel-title {
+.card-title {
   font-family: var(--font-mono);
   font-size: 13px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-muted);
-  margin: 0 0 20px;
+  margin-bottom: var(--space-md);
 }
 
+/* --- Lista de status (usada no card da home) --- */
 .status-list {
   list-style: none;
-  margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -226,7 +260,7 @@ body {
 .status-item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-sm);
   font-size: 14px;
 }
 
@@ -243,7 +277,7 @@ body {
 }
 
 .status-dot--pending {
-  background: var(--color-pending);
+  background: var(--color-warning);
   opacity: 0.85;
 }
 
@@ -262,23 +296,160 @@ body {
   color: var(--color-text-muted);
 }
 
-/* ---------- Footer ---------- */
-
-.footer {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 48px 40px;
+/* --- Badges de estado ---
+  Representam os seis estados do painel de autenticação
+  (Fase 3): AGUARDANDO, ANALISANDO, IDENTIFICADO, AUTORIZADO,
+  NEGADO e ERRO. O texto e o ícone de cada badge já comunicam
+  o estado por conta própria — a cor é reforço, não é a única
+  informação (importante para acessibilidade e para não depender
+  apenas de cor, conforme especificação do projeto). */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
 }
 
-.footer p {
+.badge--waiting {
+  color: var(--color-neutral);
+  background: rgba(98, 112, 138, 0.12);
+  border-color: rgba(98, 112, 138, 0.3);
+}
+
+.badge--processing {
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border-color: rgba(52, 209, 196, 0.35);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.badge--identified {
+  color: var(--color-info);
+  background: rgba(77, 141, 255, 0.12);
+  border-color: rgba(77, 141, 255, 0.35);
+}
+
+.badge--granted {
+  color: var(--color-ok);
+  background: rgba(52, 209, 160, 0.12);
+  border-color: rgba(52, 209, 160, 0.35);
+}
+
+.badge--denied {
+  color: var(--color-danger);
+  background: rgba(224, 86, 107, 0.12);
+  border-color: rgba(224, 86, 107, 0.35);
+}
+
+.badge--error {
+  color: var(--color-warning);
+  background: rgba(209, 166, 52, 0.12);
+  border-color: rgba(209, 166, 52, 0.35);
+}
+
+
+/* ----------------------------------------------------------
+  5. PÁGINA: INICIAL (hero)
+  ---------------------------------------------------------- */
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--space-xl);
+  align-items: start;
+  padding-top: var(--space-lg);
+  padding-bottom: var(--space-xl);
+}
+
+.hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: var(--space-md);
+}
+
+.hero-title {
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 10px;
+}
+
+.hero-subtitle {
+  font-size: 19px;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-md);
+}
+
+.hero-description {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  max-width: 560px;
+  margin-bottom: var(--space-lg);
+}
+
+.hero-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.hero-hint {
   font-size: 12.5px;
   color: var(--color-text-muted);
-  border-top: 1px solid var(--color-border-soft);
-  padding-top: 20px;
-  max-width: 720px;
 }
 
-/* ---------- Responsividade ---------- */
+/* Seção de demonstração dos estados na página inicial.
+  (Serve como "prévia" didática do que a Fase 3 vai implementar.) */
+.states-preview {
+  border-top: 1px solid var(--color-border-soft);
+  padding-top: var(--space-lg);
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: var(--space-xs);
+}
+
+.section-description {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  max-width: 620px;
+  margin-bottom: var(--space-md);
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+
+/* ----------------------------------------------------------
+  6. RESPONSIVIDADE
+  ---------------------------------------------------------- */
 
 @media (max-width: 1024px) {
   .hero {
@@ -294,8 +465,8 @@ body {
     padding: 16px 24px;
   }
 
-  .hero {
-    padding: 40px 24px;
+  .page {
+    padding: 24px;
   }
 
   .hero-title {

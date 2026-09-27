@@ -1,88 +1,57 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+{% extends "base.html" %}
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ system_name }} · Terminal de Autenticação Biométrica</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
+{% block title %}{{ system_name }} · Terminal de Autenticação Biométrica{% endblock %}
 
-<body>
+{% block content %}
+<div class="hero">
+  <div class="hero-content">
+    <p class="hero-eyebrow">Terminal de Acesso: Cofre de Segurança Máxima</p>
+    <h1 class="hero-title">{{ system_name }}</h1>
+    <p class="hero-subtitle">{{ system_subtitle }}</p>
 
-  <div class="scanline"></div>
-
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark">◈</span>
-      <span class="brand-name">{{ system_name }}</span>
-    </div>
-    <nav class="topbar-meta">
-      <span class="meta-item">Ministério do Meio Ambiente Instalações · Subterrâneas e Acesso Restrito</span>
-      <span class="meta-divider">·</span>
-      <span class="meta-item">Protótipo Acadêmico</span>
-    </nav>
-  </header>
-
-  <main class="hero">
-    <div class="hero-content">
-      <p class="hero-eyebrow">Terminal de Acesso: Cofre de Segurança Máxima</p>
-      <h1 class="hero-title">{{ system_name }}</h1>
-      <p class="hero-subtitle">{{ system_subtitle }}</p>
-
-      <p class="hero-description">
-        Este terminal é a última linha de defesa do País contra
-        indivíduos não autorizados. O sistema efetua o processamento da
-        imagem em tempo real para identificar e autenticar o rosto do utilizador.
-        O acesso aos segredos mais sombrios do nosso ecossistema está
-        condicionado a um rigoroso esquema de permissões dividido em três níveis,
-        desde a permissão geral até ao acesso exclusivo da Ministra Dra. Evelyn Castro. O
-        fracasso na autenticação será tratado como uma ameaça de pandemia mundial.
-      </p>
-
-      <div class="hero-actions">
-        <button class="btn-primary" disabled title="Disponível a partir da Fase 3">
-          Iniciar Varredura de Reconhecimento Facial
-        </button>
-        <span class="hero-hint">Aviso do Sistema: Sensor de aquisição de imagem atualmente inativo.</span>
-      </div>
-    </div>
-
-    <div class="hero-panel">
-      <h2 class="panel-title">Status do Sistema</h2>
-      <ul class="status-list">
-        <li class="status-item">
-          <span class="status-dot status-dot--ok"></span>
-          <span class="status-label">Sistema operacional</span>
-          <span class="status-value">Ativo</span>
-        </li>
-        <li class="status-item">
-          <span class="status-dot status-dot--pending"></span>
-          <span class="status-label">Reconhecimento facial</span>
-          <span class="status-value">Não implementado</span>
-        </li>
-        <li class="status-item">
-          <span class="status-dot status-dot--pending"></span>
-          <span class="status-label">Controle de acesso</span>
-          <span class="status-value">Não implementado</span>
-        </li>
-        <li class="status-item">
-          <span class="status-dot status-dot--pending"></span>
-          <span class="status-label">Registro de eventos</span>
-          <span class="status-value">Não implementado</span>
-        </li>
-      </ul>
-    </div>
-  </main>
-
-  <footer class="footer">
-    <p>
-      Este é um protótipo acadêmico desenvolvido para a disciplina de
-      Processamento de Imagem e Visão Computacional (PIVC). Não deve ser
-      considerado uma solução de segurança biométrica real.
+    <p class="hero-description">
+      Este terminal é a última linha de defesa do País contra
+      indivíduos não autorizados. O sistema efetua o processamento da
+      imagem em tempo real para identificar e autenticar o rosto do
+      utilizador. O acesso aos segredos mais sombrios do nosso
+      ecossistema está condicionado a um rigoroso esquema de permissões
+      dividido em três níveis, desde a permissão geral até ao acesso
+      exclusivo da Ministra Dra. Evelyn Castro. O fracasso na
+      autenticação será tratado como uma ameaça de pandemia mundial.
     </p>
-  </footer>
 
-</body>
+    <div class="hero-actions">
+      <button class="btn btn-primary" disabled title="Disponível a partir da Fase 3">
+        Iniciar Varredura de Reconhecimento Facial
+      </button>
+      <span class="hero-hint">Aviso do Sistema: Sensor de aquisição de imagem atualmente inativo.</span>
+    </div>
+  </div>
 
-</html>
+  <div class="card">
+    <h2 class="card-title">Status do Sistema</h2>
+    <ul class="status-list">
+      <li class="status-item">
+        <span class="status-dot status-dot--ok"></span>
+        <span class="status-label">Sistema operacional</span>
+        <span class="status-value">Ativo</span>
+      </li>
+      <li class="status-item">
+        <span class="status-dot status-dot--pending"></span>
+        <span class="status-label">Reconhecimento facial</span>
+        <span class="status-value">Não implementado</span>
+      </li>
+      <li class="status-item">
+        <span class="status-dot status-dot--pending"></span>
+        <span class="status-label">Controle de acesso</span>
+        <span class="status-value">Não implementado</span>
+      </li>
+      <li class="status-item">
+        <span class="status-dot status-dot--pending"></span>
+        <span class="status-label">Registro de eventos</span>
+        <span class="status-value">Não implementado</span>
+      </li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

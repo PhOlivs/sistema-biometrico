@@ -12,6 +12,11 @@
     </div>
 </div>
 
+{% if not is_edit %}
+{% set current_step = 1 %}
+{% include "admin/_steps.html" %}
+{% endif %}
+
 {% include "admin/_notice.html" %}
 
 <div class="card form-card">
@@ -30,6 +35,22 @@
                    maxlength="254" required autocomplete="off"
                    {% if errors.email %}aria-invalid="true" aria-describedby="email-error"{% endif %}>
             {% if errors.email %}<p class="form-error" id="email-error">✕ {{ errors.email }}</p>{% endif %}
+        </div>
+
+        <div class="form-field">
+            <label for="job_title">Cargo</label>
+            <input type="text" id="job_title" name="job_title" value="{{ form.job_title }}"
+                   maxlength="120" required autocomplete="off"
+                   {% if errors.job_title %}aria-invalid="true" aria-describedby="job_title-error"{% endif %}>
+            {% if errors.job_title %}<p class="form-error" id="job_title-error">✕ {{ errors.job_title }}</p>{% endif %}
+        </div>
+
+        <div class="form-field">
+            <label for="division">Divisão</label>
+            <input type="text" id="division" name="division" value="{{ form.division }}"
+                   maxlength="120" required autocomplete="off"
+                   {% if errors.division %}aria-invalid="true" aria-describedby="division-error"{% endif %}>
+            {% if errors.division %}<p class="form-error" id="division-error">✕ {{ errors.division }}</p>{% endif %}
         </div>
 
         <div class="form-field">
@@ -64,7 +85,7 @@
         {% endif %}
 
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">{{ "Salvar alterações" if is_edit else "Cadastrar" }}</button>
+            <button type="submit" class="btn btn-primary">{{ "Salvar alterações" if is_edit else "Salvar e continuar para a biometria" }}</button>
             <a class="btn btn-secondary" href="{{ url_for('admin.users') }}">Cancelar</a>
         </div>
     </form>

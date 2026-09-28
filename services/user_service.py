@@ -20,6 +20,8 @@ from models.access_level import is_valid_level
 from models.user import ROLE_ADMIN, VALID_ROLES, User
 
 MAX_NAME_LENGTH = 120
+MAX_JOB_TITLE_LENGTH = 120
+MAX_DIVISION_LENGTH = 120
 MAX_EMAIL_LENGTH = 254
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -27,6 +29,8 @@ EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 DEFAULT_ADMIN = {
     "name": "Administrador do Sistema",
     "email": "admin@bioauth.local",
+    "job_title": "Administrador do Sistema",
+    "division": "Administração do BIOAUTH",
     "role": ROLE_ADMIN,
     "access_level": 3,
 }
@@ -63,7 +67,7 @@ def _parse_access_level(raw):
     return None
 
 
-def _clean_user_data(name, email, role, access_level) -> dict:
+def _clean_user_data(name, email, job_title, division, role, access_level) -> dict:
     """Valida e normaliza os dados de um usuário.
 
     Retorna um dicionário limpo ou levanta ValidationError com TODOS os
@@ -73,6 +77,8 @@ def _clean_user_data(name, email, role, access_level) -> dict:
 
     name = (name or "").strip()
     email = (email or "").strip().lower()
+    job_title = (job_title or "").strip()
+    division = (division or "").strip()
     role = (role or "").strip()
     level = _parse_access_level(access_level)
 
@@ -86,6 +92,16 @@ def _clean_user_data(name, email, role, access_level) -> dict:
     elif len(email) > MAX_EMAIL_LENGTH or not EMAIL_PATTERN.match(email):
         errors["email"] = "Informe um e-mail válido."
 
+    if not job_title:
+        errors["job_title"] = "Informe o cargo."
+    elif len(job_title) > MAX_JOB_TITLE_LENGTH:
+        errors["job_title"] = f"O cargo deve ter no máximo {MAX_JOB_TITLE_LENGTH} caracteres."
+
+    if not division:
+        errors["division"] = "Informe a divisão."
+    elif len(division) > MAX_DIVISION_LENGTH:
+        errors["division"] = f"A divisão deve ter no máximo {MAX_DIVISION_LENGTH} caracteres."
+
     if role not in VALID_ROLES:
         errors["role"] = "Perfil inválido."
 
@@ -95,7 +111,14 @@ def _clean_user_data(name, email, role, access_level) -> dict:
     if errors:
         raise ValidationError(errors)
 
-    return {"name": name, "email": email, "role": role, "access_level": level}
+    return {
+        "name": name,
+        "email": email,
+        "job_title": job_title,
+        "division": division,
+        "role": role,
+        "access_level": level,
+    }
 
 
 def _now() -> str:
@@ -169,9 +192,13 @@ def _is_last_active_admin(conn, user: User) -> bool:
 # Operações
 # ----------------------------------------------------------------------
 
-def create_user(conn, name, email, role, access_level) -> User:
-    """Cadastra um usuário ativo. Levanta ValidationError se algo for inválido."""
-    data = _clean_user_data(name, email, role, access_level)
+def create_user(conn, *, name, email, job_title, division, role, access_level) -> User:
+    """Cadastra um usuário ativo. Levanta ValidationError se algo for inválido.
+
+    Os argumentos são obrigatoriamente nomeados: com seis campos de texto,
+    a ordem posicional seria fácil de errar sem que ninguém perceba.
+    """
+    data = _clean_user_data(name, email, job_title, division, role, access_level)
 
     if _email_taken(conn, data["email"]):
         raise ValidationError({"email": "Já existe um usuário com este e-mail."})
@@ -179,9 +206,13 @@ def create_user(conn, name, email, role, access_level) -> User:
     now = _now()
     try:
         cursor = conn.execute(
-            "INSERT INTO users (name, email, role, access_level, active, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, 1, ?, ?)",
-            (data["name"], data["email"], data["role"], data["access_level"], now, now),
+            "INSERT INTO users "
+            "(name, email, job_title, division, role, access_level, active, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)",
+            (
+                data["name"], data["email"], data["job_title"], data["division"],
+                data["role"], data["access_level"], now, now,
+            ),
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -192,10 +223,10 @@ def create_user(conn, name, email, role, access_level) -> User:
     return _require_user(conn, cursor.lastrowid)
 
 
-def update_user(conn, user_id, name, email, role, access_level) -> User:
-    """Atualiza nome, e-mail, perfil e nível de um usuário existente."""
+def update_user(conn, user_id, *, name, email, job_title, division, role, access_level) -> User:
+    """Atualiza os dados de um usuário existente."""
     current = _require_user(conn, user_id)
-    data = _clean_user_data(name, email, role, access_level)
+    data = _clean_user_data(name, email, job_title, division, role, access_level)
 
     if _email_taken(conn, data["email"], exclude_id=user_id):
         raise ValidationError({"email": "Já existe um usuário com este e-mail."})
@@ -207,9 +238,12 @@ def update_user(conn, user_id, name, email, role, access_level) -> User:
 
     try:
         conn.execute(
-            "UPDATE users SET name = ?, email = ?, role = ?, access_level = ?, updated_at = ? "
-            "WHERE id = ?",
-            (data["name"], data["email"], data["role"], data["access_level"], _now(), user_id),
+            "UPDATE users SET name = ?, email = ?, job_title = ?, division = ?, "
+            "role = ?, access_level = ?, updated_at = ? WHERE id = ?",
+            (
+                data["name"], data["email"], data["job_title"], data["division"],
+                data["role"], data["access_level"], _now(), user_id,
+            ),
         )
         conn.commit()
     except sqlite3.IntegrityError:

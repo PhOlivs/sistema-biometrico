@@ -32,7 +32,14 @@ def db(db_path, client):  # depende de `client` para o banco já existir
 
 
 def valid_form(**overrides):
-    data = {"name": "Maria Souza", "email": "maria@example.com", "role": "USER", "access_level": "1"}
+    data = {
+        "name": "Maria Souza",
+        "email": "maria@example.com",
+        "job_title": "Analista Ambiental",
+        "division": "Divisão de Recursos Hídricos",
+        "role": "USER",
+        "access_level": "1",
+    }
     data.update(overrides)
     return data
 
@@ -69,6 +76,7 @@ def test_dashboard_shows_default_admin_and_totals(client):
     html = page(client.get("/admin"))
     assert "Administrador do Sistema" in html
     assert "admin@bioauth.local" in html
+    assert "Administração do BIOAUTH" in html   # divisão do admin inicial
     assert "Administrador" in html
 
 
@@ -127,8 +135,106 @@ def test_duplicate_email_shows_error_and_keeps_typed_values(client, db):
 
 def test_missing_fields_are_rejected(client):
     response = client.post("/admin/users/new", data={})
+    html = page(response)
     assert response.status_code == 400
-    assert "Informe o nome completo" in page(response)
+    assert "Informe o nome completo" in html
+    assert "Informe o cargo" in html
+    assert "Informe a divisão" in html
+
+
+def test_job_title_and_division_are_saved(client, db):
+    client.post(
+        "/admin/users/new",
+        data=valid_form(job_title="Diretor de Recursos Naturais", division="Diretoria de Recursos Naturais"),
+    )
+    user = user_service.list_users(db)[-1]
+    assert user.job_title == "Diretor de Recursos Naturais"
+    assert user.division == "Diretoria de Recursos Naturais"
+
+
+# ----------------------------------------------------------------------
+# Fluxo de cadastro: 1) dados do usuário  ->  2) cadastro biométrico
+# ----------------------------------------------------------------------
+
+def test_creating_a_user_leads_to_the_biometric_step(client, db):
+    response = client.post("/admin/users/new", data=valid_form())
+    user = user_service.list_users(db)[-1]
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(f"/admin/users/{user.id}/biometric")
+
+
+def test_failed_registration_does_not_advance_to_biometric_step(client, db):
+    response = client.post("/admin/users/new", data=valid_form(access_level="999"))
+    assert response.status_code == 400
+    assert "Location" not in response.headers
+
+
+def test_biometric_page_shows_identity_and_camera(client, db):
+    client.post(
+        "/admin/users/new",
+        data=valid_form(
+            name="João da Silva", job_title="Diretor de Recursos Naturais",
+            division="Diretoria de Recursos Naturais", access_level="2",
+            email="joao@example.com",
+        ),
+    )
+    user = user_service.list_users(db)[-1]
+
+    response = client.get(f"/admin/users/{user.id}/biometric")
+    html = page(response)
+
+    assert response.status_code == 200
+    assert "João da Silva" in html
+    assert "Diretor de Recursos Naturais" in html
+    assert "Diretoria de Recursos Naturais" in html
+    assert "Nível 2" in html
+    assert "Aguardando captura" in html
+    assert 'id="camera-feed"' in html          # webcam reaproveitada
+    assert "js/camera.js" in html
+
+
+def test_capture_button_is_disabled_until_processing_exists(client, db):
+    """Nesta fase não existe captura: o botão não pode estar ativo."""
+    user = create_and_get(client, db)
+    html = page(client.get(f"/admin/users/{user.id}/biometric"))
+
+    import re
+    button = re.search(r"<button[^>]*>\s*Capturar biometria", html)
+    assert button is not None
+    assert "disabled" in button.group(0)
+
+
+def test_biometric_step_does_not_change_access_level(client, db):
+    """O nível é definido no cadastro pelo administrador; a biometria não o altera."""
+    user = create_and_get(client, db, access_level="2")
+    client.get(f"/admin/users/{user.id}/biometric")
+    assert user_service.get_user(db, user.id).access_level == 2
+
+
+def test_biometric_page_for_unknown_user_is_404(client):
+    assert client.get("/admin/users/999/biometric").status_code == 404
+
+
+def test_biometric_page_is_read_only(client, db):
+    user = create_and_get(client, db)
+    assert client.post(f"/admin/users/{user.id}/biometric").status_code == 405
+
+
+def test_new_user_form_shows_steps_but_edit_form_does_not(client, db):
+    new_html = page(client.get("/admin/users/new"))
+    assert "Etapas do cadastro" in new_html
+    assert "Salvar e continuar para a biometria" in new_html
+
+    user = create_and_get(client, db)
+    edit_html = page(client.get(f"/admin/users/{user.id}/edit"))
+    assert "Etapas do cadastro" not in edit_html
+    assert "Salvar alterações" in edit_html
+
+
+def test_users_table_links_to_the_biometric_page(client, db):
+    user = create_and_get(client, db)
+    assert f"/admin/users/{user.id}/biometric" in page(client.get("/admin/users"))
 
 
 # ----------------------------------------------------------------------
@@ -154,6 +260,17 @@ def test_edit_changes_level(client, db):
     )
     assert response.status_code == 302
     assert user_service.get_user(db, user.id).access_level == 3
+
+
+def test_edit_changes_job_title_and_division(client, db):
+    user = create_and_get(client, db)
+    response = client.post(
+        f"/admin/users/{user.id}/edit",
+        data=valid_form(job_title="Diretora", division="Diretoria de Águas"),
+    )
+    assert response.status_code == 302
+    updated = user_service.get_user(db, user.id)
+    assert (updated.job_title, updated.division) == ("Diretora", "Diretoria de Águas")
 
 
 def test_edit_with_invalid_level_is_rejected(client, db):

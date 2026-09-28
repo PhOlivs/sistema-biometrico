@@ -2,8 +2,8 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th scope="col">Nome</th>
-                <th scope="col">E-mail</th>
+                <th scope="col">Usuário</th>
+                <th scope="col">Cargo e divisão</th>
                 <th scope="col">Perfil</th>
                 <th scope="col">Nível de acesso</th>
                 <th scope="col">Status</th>
@@ -13,8 +13,14 @@
         <tbody>
             {% for user in users %}
             <tr>
-                <td>{{ user.name }}</td>
-                <td class="cell-mono">{{ user.email }}</td>
+                <td>
+                    {{ user.name }}
+                    <span class="cell-sub cell-mono">{{ user.email }}</span>
+                </td>
+                <td>
+                    {{ user.job_title or "—" }}
+                    <span class="cell-sub">{{ user.division or "—" }}</span>
+                </td>
                 <td>
                     {% if user.is_admin %}
                     <span class="badge badge--sm badge--identified">◈ {{ user.role_label }}</span>
@@ -36,6 +42,8 @@
                 <td class="col-actions">
                     <a class="btn btn-secondary btn-sm"
                        href="{{ url_for('admin.edit_user', user_id=user.id) }}">Editar</a>
+                    <a class="btn btn-secondary btn-sm"
+                       href="{{ url_for('admin.biometric', user_id=user.id) }}">Biometria</a>
 
                     {% if user.active %}
                     <form class="inline-form" method="post"

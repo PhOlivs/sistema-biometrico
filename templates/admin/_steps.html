@@ -1,0 +1,13 @@
+{# Espera a variável current_step (1 ou 2), definida pela página que inclui este partial. #}
+<ol class="steps" aria-label="Etapas do cadastro">
+    <li class="step {% if current_step == 1 %}step--current{% else %}step--done{% endif %}"
+        {% if current_step == 1 %}aria-current="step"{% endif %}>
+        <span class="step-number">{% if current_step > 1 %}✓{% else %}1{% endif %}</span>
+        Dados do usuário
+    </li>
+    <li class="step {% if current_step == 2 %}step--current{% endif %}"
+        {% if current_step == 2 %}aria-current="step"{% endif %}>
+        <span class="step-number">2</span>
+        Cadastro biométrico
+    </li>
+</ol>

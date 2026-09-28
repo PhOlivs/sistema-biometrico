@@ -2,8 +2,11 @@
 Modelo de usuário do BIOAUTH.
 
 Um User representa uma IDENTIDADE CADASTRADA no sistema, não uma face.
-Dados biométricos (embeddings) serão associados a ele em uma fase futura,
-sem alterar esta classe.
+Dados biométricos (embeddings) NÃO ficam aqui: serão guardados em uma
+estrutura separada, ligada ao usuário, quando o reconhecimento existir.
+
+Cargo (job_title) e divisão (division) fazem parte da identidade
+institucional da pessoa e aparecerão na tela de identidade confirmada.
 
 Duas informações diferentes, que não devem ser confundidas:
 
@@ -34,6 +37,8 @@ class User:
     id: int
     name: str
     email: str
+    job_title: str
+    division: str
     role: str
     access_level: int
     active: bool
@@ -47,6 +52,8 @@ class User:
             id=row["id"],
             name=row["name"],
             email=row["email"],
+            job_title=row["job_title"],
+            division=row["division"],
             role=row["role"],
             access_level=row["access_level"],
             active=bool(row["active"]),

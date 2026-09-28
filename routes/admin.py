@@ -51,6 +51,8 @@ def _read_form() -> dict:
     return {
         "name": request.form.get("name", ""),
         "email": request.form.get("email", ""),
+        "job_title": request.form.get("job_title", ""),
+        "division": request.form.get("division", ""),
         "role": request.form.get("role", ""),
         "access_level": request.form.get("access_level", ""),
     }
@@ -94,10 +96,20 @@ def new_user():
             user = user_service.create_user(get_db(), **form)
         except ValidationError as exc:
             return render_template("admin/user_form.html", **_form_context(form, exc.errors)), 400
-        flash(f"Usuário {user.name} cadastrado com sucesso.", "success")
-        return redirect(url_for("admin.users"))
+        flash(
+            f"Dados de {user.name} salvos. Próxima etapa: cadastro biométrico.",
+            "success",
+        )
+        return redirect(url_for("admin.biometric", user_id=user.id))
 
-    form = {"name": "", "email": "", "role": ROLE_USER, "access_level": "1"}
+    form = {
+        "name": "",
+        "email": "",
+        "job_title": "",
+        "division": "",
+        "role": ROLE_USER,
+        "access_level": "1",
+    }
     return render_template("admin/user_form.html", **_form_context(form, {}))
 
 
@@ -119,10 +131,29 @@ def edit_user(user_id):
     form = {
         "name": user.name,
         "email": user.email,
+        "job_title": user.job_title,
+        "division": user.division,
         "role": user.role,
         "access_level": str(user.access_level),
     }
     return render_template("admin/user_form.html", **_form_context(form, {}, user))
+
+
+# ----------------------------------------------------------------------
+# Cadastro biométrico (etapa 2 do cadastro)
+# ----------------------------------------------------------------------
+
+@admin_bp.route("/users/<int:user_id>/biometric")
+def biometric(user_id):
+    """Tela do cadastro facial de um usuário já cadastrado.
+
+    Nesta fase a tela apenas exibe a identidade e a câmera. A captura e o
+    processamento do rosto ainda NÃO existem: o botão de captura fica
+    desabilitado até a fase de processamento do frame. O nível de acesso
+    NÃO é definido aqui: quem o define é o administrador, no cadastro.
+    """
+    user = _get_user_or_404(user_id)
+    return render_template("admin/biometric.html", user=user)
 
 
 # ----------------------------------------------------------------------

@@ -864,6 +864,61 @@ h1, h2, h3, p, ul {
     text-decoration: underline;
 }
 
+/* --- Indicador de etapas do cadastro ---
+   Número/✓ + texto identificam a etapa; a cor é apenas reforço. */
+.steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+    margin: 0 0 var(--space-lg);
+    padding: 0;
+    list-style: none;
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 14px;
+    color: var(--color-text-muted);
+}
+
+.step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+
+.step--current {
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
+
+.step--current .step-number {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+}
+
+.step--done .step-number {
+    color: var(--color-ok);
+    border-color: var(--color-ok);
+}
+
+/* --- Ações no painel lateral (cadastro biométrico) --- */
+.panel-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+}
+
 
 /* ----------------------------------------------------------
    8. RESPONSIVIDADE

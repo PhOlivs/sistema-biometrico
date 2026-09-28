@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}{{ system_name }} · Autenticação{% endblock %}
+
+{% block content %}
+<div class="auth-layout">
+
+  <div class="camera-area">
+    <div class="camera-placeholder">
+      <span class="camera-icon">◎</span>
+      <p class="camera-status-text">Sensor de aquisição de imagem inativo</p>
+      <p class="camera-status-hint">Módulo de webcam habilitado na Fase 4</p>
+    </div>
+    <div class="camera-footer">
+      <span class="status-dot status-dot--pending"></span>
+      <span>Câmera não conectada</span>
+    </div>
+  </div>
+
+  <aside class="auth-panel card">
+    <h2 class="card-title">Painel de Autenticação</h2>
+
+    <div class="auth-state">
+      <span class="badge badge--waiting">○ Aguardando</span>
+      <p class="auth-state-text">Aguardando identificação</p>
+    </div>
+
+    <div class="auth-identity" hidden>
+      <!-- Preenchido dinamicamente a partir da Fase 7 (reconhecimento).
+                 Estrutura já definida agora para documentar o fluxo completo. -->
+      <dl class="identity-list">
+        <div class="identity-row">
+          <dt>Nome</dt>
+          <dd>—</dd>
+        </div>
+        <div class="identity-row">
+          <dt>Cargo</dt>
+          <dd>—</dd>
+        </div>
+        <div class="identity-row">
+          <dt>Nível de acesso</dt>
+          <dd>—</dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="auth-requirement">
+      <span class="requirement-label">Nível de segurança requerido</span>
+      <span class="requirement-value">Nível 1</span>
+    </div>
+
+    <p class="auth-instructions">
+      Posicione-se em frente à câmera, com boa iluminação e apenas
+      uma pessoa no quadro.
+    </p>
+  </aside>
+
+</div>
+{% endblock %}

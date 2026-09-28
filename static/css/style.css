@@ -1,7 +1,23 @@
-/* ----------------------------------------------------------
-1. VARIÁVEIS
----------------------------------------------------------- */
+/* ==========================================================
+   BIOAUTH — Identidade Visual
+   Terminal institucional de autenticação biométrica.
 
+   Toda a identidade visual do projeto é centralizada aqui.
+   Organização deste arquivo:
+
+     1. Variáveis (paleta, tipografia, espaçamento)
+     2. Reset básico
+     3. Layout comum (topbar, footer, container de página)
+     4. Componentes reutilizáveis (botão, card, badge de estado)
+     5. Página: inicial (hero)
+     6. Página: autenticação (câmera + painel)
+     7. Responsividade
+   ========================================================== */
+
+
+/* ----------------------------------------------------------
+   1. VARIÁVEIS
+   ---------------------------------------------------------- */
 :root {
   /* Paleta: base institucional escura + acento ciano de "varredura óptica" */
   --color-bg: #0b1220;
@@ -18,7 +34,7 @@
   --color-accent-soft: rgba(52, 209, 196, 0.14);
 
   /* Cores semânticas dos estados de autenticação.
-Reaproveitadas tanto no painel de status quanto nos badges. */
+       Reaproveitadas tanto no painel de status quanto nos badges. */
   --color-neutral: #62708a;
   /* aguardando */
   --color-info: #4d8dff;
@@ -49,8 +65,8 @@ Reaproveitadas tanto no painel de status quanto nos badges. */
 
 
 /* ----------------------------------------------------------
-2. RESET BÁSICO
----------------------------------------------------------- */
+   2. RESET BÁSICO
+   ---------------------------------------------------------- */
 * {
   box-sizing: border-box;
 }
@@ -79,11 +95,11 @@ ul {
 
 
 /* ----------------------------------------------------------
-3. LAYOUT COMUM (topbar, footer, container de página)
----------------------------------------------------------- */
+   3. LAYOUT COMUM (topbar, footer, container de página)
+   ---------------------------------------------------------- */
 
 /* Linha de varredura sutil no topo da tela — reforça a metáfora
-de visão computacional sem recorrer a animações exageradas. */
+   de visão computacional sem recorrer a animações exageradas. */
 .scanline {
   position: fixed;
   top: 0;
@@ -161,9 +177,9 @@ de visão computacional sem recorrer a animações exageradas. */
 }
 
 /* Container principal de conteúdo de cada página.
-Páginas futuras (authentication.html, access_granted.html, etc.)
-colocam seu conteúdo dentro do {% block content %} do base.html,
-que é renderizado aqui dentro de <main class="page"> . */
+   Páginas futuras (authentication.html, access_granted.html, etc.)
+   colocam seu conteúdo dentro do {% block content %} do base.html,
+   que é renderizado aqui dentro de <main class="page"> . */
 .page {
   max-width: 1200px;
   margin: 0 auto;
@@ -186,8 +202,8 @@ que é renderizado aqui dentro de <main class="page"> . */
 
 
 /* ----------------------------------------------------------
-  4. COMPONENTES REUTILIZÁVEIS
-  ---------------------------------------------------------- */
+   4. COMPONENTES REUTILIZÁVEIS
+   ---------------------------------------------------------- */
 
 /* --- Botões --- */
 .btn {
@@ -198,6 +214,7 @@ que é renderizado aqui dentro de <main class="page"> . */
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.02em;
+  text-decoration: none;
   cursor: pointer;
   transition: opacity var(--transition), transform var(--transition);
 }
@@ -230,8 +247,8 @@ que é renderizado aqui dentro de <main class="page"> . */
 }
 
 /* --- Card genérico ---
-  Usado no painel de status da home e reaproveitável no painel
-  de autenticação (Fase 3), no cadastro (Fase 6), etc. */
+   Usado no painel de status da home e reaproveitável no painel
+   de autenticação (Fase 3), no cadastro (Fase 6), etc. */
 .card {
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
@@ -297,12 +314,12 @@ que é renderizado aqui dentro de <main class="page"> . */
 }
 
 /* --- Badges de estado ---
-  Representam os seis estados do painel de autenticação
-  (Fase 3): AGUARDANDO, ANALISANDO, IDENTIFICADO, AUTORIZADO,
-  NEGADO e ERRO. O texto e o ícone de cada badge já comunicam
-  o estado por conta própria — a cor é reforço, não é a única
-  informação (importante para acessibilidade e para não depender
-  apenas de cor, conforme especificação do projeto). */
+   Representam os seis estados do painel de autenticação
+   (Fase 3): AGUARDANDO, ANALISANDO, IDENTIFICADO, AUTORIZADO,
+   NEGADO e ERRO. O texto e o ícone de cada badge já comunicam
+   o estado por conta própria — a cor é reforço, não é a única
+   informação (importante para acessibilidade e para não depender
+   apenas de cor, conforme especificação do projeto). */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -367,8 +384,8 @@ que é renderizado aqui dentro de <main class="page"> . */
 
 
 /* ----------------------------------------------------------
-  5. PÁGINA: INICIAL (hero)
-  ---------------------------------------------------------- */
+   5. PÁGINA: INICIAL (hero)
+   ---------------------------------------------------------- */
 
 .hero {
   display: grid;
@@ -421,7 +438,7 @@ que é renderizado aqui dentro de <main class="page"> . */
 }
 
 /* Seção de demonstração dos estados na página inicial.
-  (Serve como "prévia" didática do que a Fase 3 vai implementar.) */
+   (Serve como "prévia" didática do que a Fase 3 vai implementar.) */
 .states-preview {
   border-top: 1px solid var(--color-border-soft);
   padding-top: var(--space-lg);
@@ -448,12 +465,154 @@ que é renderizado aqui dentro de <main class="page"> . */
 
 
 /* ----------------------------------------------------------
-  6. RESPONSIVIDADE
-  ---------------------------------------------------------- */
+   6. PÁGINA: AUTENTICAÇÃO
+   ---------------------------------------------------------- */
+
+.auth-layout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--space-xl);
+  align-items: stretch;
+  padding-top: var(--space-lg);
+  padding-bottom: var(--space-xl);
+}
+
+/* --- Área da câmera --- */
+.camera-area {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  min-height: 420px;
+}
+
+.camera-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  text-align: center;
+  padding: var(--space-xl);
+}
+
+.camera-icon {
+  font-size: 40px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.camera-status-text {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+}
+
+.camera-status-hint {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.camera-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-top: 1px solid var(--color-border-soft);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+/* --- Painel de autenticação (estende .card) --- */
+.auth-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.auth-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.auth-state-text {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+}
+
+/* --- Identidade (preenchida a partir da Fase 7) --- */
+.identity-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+}
+
+.identity-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  font-size: 14px;
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.identity-row dt {
+  color: var(--color-text-muted);
+}
+
+.identity-row dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-weight: 600;
+  text-align: right;
+}
+
+/* --- Nível de segurança requerido --- */
+.auth-requirement {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.requirement-label {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.requirement-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.auth-instructions {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+
+/* ----------------------------------------------------------
+   7. RESPONSIVIDADE
+   ---------------------------------------------------------- */
 
 @media (max-width: 1024px) {
-  .hero {
+
+  .hero,
+  .auth-layout {
     grid-template-columns: 1fr;
+  }
+
+  .camera-area {
+    min-height: 320px;
   }
 }
 

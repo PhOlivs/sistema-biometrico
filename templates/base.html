@@ -15,14 +15,29 @@
             <span class="brand-mark">◈</span>
             <span class="brand-name">{{ system_name }}</span>
         </div>
-        <nav class="topbar-meta">
+        <nav class="topbar-nav" aria-label="Navegação principal">
+            <a href="{{ url_for('index') }}">Início</a>
+            <a href="{{ url_for('authentication') }}">Autenticação</a>
+            <a href="{{ url_for('admin.dashboard') }}">Administração</a>
+        </nav>
+        <div class="topbar-meta">
             <span class="meta-item">Ministério do Meio Ambiente Instalações · Subterrâneas e Acesso Restrito</span>
             <span class="meta-divider">·</span>
             <span class="meta-item">Protótipo Acadêmico</span>
-        </nav>
+        </div>
     </header>
 
     <main class="page">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-stack" role="status">
+                {% for category, message in messages %}
+                <p class="alert alert--{{ category }}">{{ message }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+
         {% block content %}{% endblock %}
     </main>
 

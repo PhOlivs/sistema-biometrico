@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}{{ system_name }} · Painel Administrativo{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <p class="hero-eyebrow">Administração</p>
+        <h1 class="page-title">Painel Administrativo</h1>
+    </div>
+    <a class="btn btn-primary" href="{{ url_for('admin.new_user') }}">Cadastrar usuário</a>
+</div>
+
+{% include "admin/_notice.html" %}
+
+<div class="stat-grid">
+    <div class="card">
+        <h2 class="card-title">Usuários cadastrados</h2>
+        <p class="stat-value">{{ stats.total }}</p>
+    </div>
+    <div class="card">
+        <h2 class="card-title">Usuários ativos</h2>
+        <p class="stat-value">{{ stats.active }}</p>
+    </div>
+    <div class="card">
+        <h2 class="card-title">Usuários inativos</h2>
+        <p class="stat-value">{{ stats.inactive }}</p>
+    </div>
+</div>
+
+<section class="admin-section">
+    <div class="section-heading">
+        <h2 class="section-title">Últimos usuários cadastrados</h2>
+        <a class="link-action" href="{{ url_for('admin.users') }}">Ver todos os usuários →</a>
+    </div>
+    {% include "admin/_users_table.html" %}
+</section>
+{% endblock %}

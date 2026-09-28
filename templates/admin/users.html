@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}{{ system_name }} · Usuários{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div>
+        <p class="hero-eyebrow">Administração</p>
+        <h1 class="page-title">Usuários</h1>
+    </div>
+    <div class="admin-header-actions">
+        <a class="btn btn-secondary" href="{{ url_for('admin.dashboard') }}">Voltar ao painel</a>
+        <a class="btn btn-primary" href="{{ url_for('admin.new_user') }}">Cadastrar usuário</a>
+    </div>
+</div>
+
+{% include "admin/_notice.html" %}
+
+<section class="admin-section">
+    {% include "admin/_users_table.html" %}
+</section>
+{% endblock %}

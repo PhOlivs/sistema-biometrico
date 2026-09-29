@@ -1,22 +1,20 @@
 {% extends "base.html" %}
-
-{% block title %}{{ system_name }} · Usuários{% endblock %}
-
+{% block title %}Gerenciamento de usuários · {{ system_name }}{% endblock %}
 {% block content %}
-<div class="admin-header">
-    <div>
-        <p class="hero-eyebrow">Administração</p>
-        <h1 class="page-title">Usuários</h1>
-    </div>
-    <div class="admin-header-actions">
-        <a class="btn btn-secondary" href="{{ url_for('admin.dashboard') }}">Voltar ao painel</a>
-        <a class="btn btn-primary" href="{{ url_for('admin.new_user') }}">Cadastrar usuário</a>
-    </div>
-</div>
-
-{% include "admin/_notice.html" %}
-
-<section class="admin-section">
-    {% include "admin/_users_table.html" %}
+<section class="section-shell dashboard-page">
+  <div class="page-heading"><p class="eyebrow">ADMINISTRAÇÃO</p><h1>Gerenciamento de usuários</h1><p>Pesquise e filtre credenciais. Dados pessoais sensíveis não são exibidos nesta listagem.</p></div>
+  <form class="filter-bar" method="get">
+    <label class="search-field"><span>Pesquisar</span><input name="q" value="{{ filters.get('q', '') }}" placeholder="Nome ou matrícula"></label>
+    <label><span>Status</span><select name="status"><option value="">Todos</option>{% for status, label in [('PENDING','Pendente'),('APPROVED','Aprovado'),('REJECTED','Rejeitado'),('SUSPENDED','Suspenso'),('INACTIVE','Inativo')] %}<option value="{{ status }}" {% if filters.get('status') == status %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label><span>Nível</span><select name="level"><option value="">Todos</option>{% for level in [1,2,3] %}<option value="{{ level }}" {% if filters.get('level')|string == level|string %}selected{% endif %}>Nível {{ level }}</option>{% endfor %}</select></label>
+    <button class="button button-primary" type="submit">Filtrar</button>
+  </form>
+  <div class="panel-card table-panel">
+    <div class="table-wrap"><table><thead><tr><th><a href="{{ url_for('admin.users', q=filters.get('q'), status=filters.get('status'), level=filters.get('level'), order='matricula', direction='desc' if filters.get('order') == 'matricula' and filters.get('direction') != 'desc' else 'asc') }}">Matrícula</a></th><th><a href="{{ url_for('admin.users', q=filters.get('q'), status=filters.get('status'), level=filters.get('level'), order='name', direction='desc' if filters.get('order') == 'name' and filters.get('direction') != 'desc' else 'asc') }}">Nome</a></th><th>Cargo</th><th>Nível</th><th>Status</th><th>Cadastro</th><th>Última atividade</th><th></th></tr></thead><tbody>
+      {% for user in users %}<tr><td class="monospace">{{ user.matricula }}</td><td>{{ user.name }}</td><td>{{ user.job_title }}</td><td><span class="level-badge level-{{ user.access_level }}">Nível {{ user.access_level }}</span></td><td><span class="status-badge status-{{ user.status|lower }}">{{ user.status_label }}</span></td><td>{{ user.created_at[:10] }}</td><td>{{ user.last_activity_at[:16].replace('T', ' ') if user.last_activity_at else '—' }}</td><td><a class="table-link" href="{{ url_for('admin.user_detail', user_id=user.id) }}">Visualizar</a></td></tr>
+      {% else %}<tr><td colspan="8" class="empty-cell">Nenhum usuário corresponde aos filtros.</td></tr>{% endfor %}
+    </tbody></table></div>
+    <div class="pagination"><span>Página {{ page }}</span><div>{% if page > 1 %}<a class="button button-secondary" href="{{ url_for('admin.users', q=filters.get('q'), status=filters.get('status'), level=filters.get('level'), order=filters.get('order'), direction=filters.get('direction'), page=page - 1) }}">Anterior</a>{% endif %}{% if has_more %}<a class="button button-secondary" href="{{ url_for('admin.users', q=filters.get('q'), status=filters.get('status'), level=filters.get('level'), order=filters.get('order'), direction=filters.get('direction'), page=page + 1) }}">Próxima</a>{% endif %}</div></div>
+  </div>
 </section>
 {% endblock %}

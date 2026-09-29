@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Usuário {{ user.matricula }} · {{ system_name }}{% endblock %}
+{% block content %}
+<section class="section-shell dashboard-page">
+  <a class="back-link" href="{{ url_for('admin.users') }}">← Voltar aos usuários</a>
+  <div class="welcome-row"><div><p class="eyebrow">PERFIL INSTITUCIONAL</p><h1>{{ user.name }}</h1><p>{{ user.matricula }} · {{ user.job_title }}</p></div><span class="status-badge status-{{ user.status|lower }}">{{ user.status_label }}</span></div>
+  <div class="admin-overview">
+    <article class="panel-card"><p class="eyebrow">IDENTIDADE E CREDENCIAL</p><dl class="detail-grid">
+      <div><dt>Matrícula</dt><dd>{{ user.matricula }}</dd></div><div><dt>Nível de acesso</dt><dd>Nível {{ user.access_level }}</dd></div>
+      <div><dt>Cargo</dt><dd>{{ user.job_title }}</dd></div><div><dt>Divisão</dt><dd>{{ user.division }}</dd></div>
+      <div><dt>E-mail</dt><dd>{{ user.email }}</dd></div><div><dt>Nascimento</dt><dd>{{ user.birth_date or 'Não informado' }}</dd></div>
+      <div><dt>CPF</dt><dd>{{ cpf_masked }}</dd></div><div><dt>RG</dt><dd>{{ rg_masked }}</dd></div>
+      <div><dt>Biometria</dt><dd>{{ biometric_status }}</dd></div><div><dt>Última atividade</dt><dd>{{ user.last_activity_at or 'Sem atividade registrada' }}</dd></div>
+      <div><dt>Criado em</dt><dd>{{ user.created_at }}</dd></div><div><dt>Perfil</dt><dd>{{ user.role_label }}</dd></div>
+    </dl><div class="form-actions"><a class="button button-primary" href="{{ url_for('admin.edit_user', user_id=user.id) }}">Editar perfil</a></div></article>
+    <article class="panel-card"><p class="eyebrow">AÇÕES ADMINISTRATIVAS</p><p>Cada alteração é identificada com o administrador responsável e registrada para auditoria.</p>
+      {% if user.status == 'SUSPENDED' or user.status == 'INACTIVE' or user.status == 'REJECTED' %}
+      <form method="post" action="{{ url_for('admin.reactivate_user', user_id=user.id) }}" data-confirm="Reativar este usuário?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="button button-primary button-full" type="submit">Reativar acesso</button></form>
+      {% elif user.status == 'APPROVED' %}
+      <form method="post" action="{{ url_for('admin.suspend_user', user_id=user.id) }}" class="stacked-form" data-confirm="Suspender o acesso deste usuário?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label for="suspend-reason">Motivo da suspensão</label><textarea id="suspend-reason" name="reason" rows="3" required maxlength="500"></textarea><button class="button button-secondary button-full" type="submit">Suspender acesso</button>
+      </form>
+      <form method="post" action="{{ url_for('admin.deactivate_user', user_id=user.id) }}" data-confirm="Desativar este perfil? O histórico será mantido.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="button button-danger button-full" type="submit">Desativar perfil</button>
+      </form>
+      {% endif %}
+    </article>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/forms.js') }}" defer></script>{% endblock %}

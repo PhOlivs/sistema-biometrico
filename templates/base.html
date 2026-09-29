@@ -1,55 +1,71 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{{ system_name }} · {{ system_subtitle }}{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="description" content="Protótipo acadêmico de identificação biométrica e controle de acesso.">
+  <title>{% block title %}{{ system_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head %}{% endblock %}
 </head>
 <body>
+  <header class="site-header">
+    <a class="brand" href="{{ url_for('auth.index') }}" aria-label="{{ system_name }} - início">
+      <span class="brand-symbol" aria-hidden="true">E</span>
+      <span><strong>{{ system_name }}</strong><small>Identidade e Acesso</small></span>
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav">Menu</button>
+    <nav id="primary-nav" class="primary-nav" aria-label="Navegação principal">
+      <a href="{{ url_for('auth.index') }}">Início</a>
+      {% if current_user %}
+        {% if current_user.is_admin %}
+          <a href="{{ url_for('admin.dashboard') }}">Administração</a>
+          <a href="{{ url_for('admin.requests_list') }}">Solicitações</a>
+          <a href="{{ url_for('admin.users') }}">Usuários</a>
+          <a href="{{ url_for('admin.access_logs') }}">Auditoria</a>
+        {% else %}
+          <a href="{{ url_for('auth.dashboard') }}">Meu painel</a>
+          <a href="{{ url_for('auth.toxins') }}">Registros</a>
+          <a href="{{ url_for('auth.profile') }}">Perfil</a>
+        {% endif %}
+        <form class="nav-logout" method="post" action="{{ url_for('auth.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="nav-link-button" type="submit">Sair</button>
+        </form>
+      {% else %}
+        <a href="{{ url_for('auth.login') }}">Entrar</a>
+        <a class="nav-cta" href="{{ url_for('auth.register') }}">Solicitar acesso</a>
+      {% endif %}
+    </nav>
+  </header>
 
-    <div class="scanline"></div>
-
-    <header class="topbar">
-        <div class="brand">
-            <span class="brand-mark">◈</span>
-            <span class="brand-name">{{ system_name }}</span>
+  <main id="main-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-stack" role="status" aria-live="polite">
+          {% for category, message in messages %}
+            <p class="alert alert--{{ category }}">{{ message }}</p>
+          {% endfor %}
         </div>
-        <nav class="topbar-nav" aria-label="Navegação principal">
-            <a href="{{ url_for('index') }}">Início</a>
-            <a href="{{ url_for('authentication') }}">Autenticação</a>
-            <a href="{{ url_for('admin.dashboard') }}">Administração</a>
-        </nav>
-        <div class="topbar-meta">
-            <span class="meta-item">Ministério do Meio Ambiente Instalações · Subterrâneas e Acesso Restrito</span>
-            <span class="meta-divider">·</span>
-            <span class="meta-item">Protótipo Acadêmico</span>
-        </div>
-    </header>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
 
-    <main class="page">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            <div class="flash-stack" role="status">
-                {% for category, message in messages %}
-                <p class="alert alert--{{ category }}">{{ message }}</p>
-                {% endfor %}
-            </div>
-            {% endif %}
-        {% endwith %}
-
-        {% block content %}{% endblock %}
-    </main>
-
-    <footer class="footer">
-        <p>
-            Este é um protótipo acadêmico desenvolvido para a disciplina de
-            Processamento de Imagem e Visão Computacional (PIVC). Não deve ser
-            considerado uma solução de segurança biométrica real.
-        </p>
-    </footer>
-
-    {% block scripts %}{% endblock %}
-
+  <footer class="site-footer">
+    <div><strong>{{ system_name }}</strong><span>Ambiente demonstrativo · Dados e entidade fictícios</span></div>
+    <p>Protótipo acadêmico. Não destinado a decisões reais de segurança nem ao armazenamento de dados de produção.</p>
+  </footer>
+  <script>
+    const navToggle = document.querySelector(".nav-toggle");
+    const primaryNav = document.getElementById("primary-nav");
+    navToggle?.addEventListener("click", () => {
+      const expanded = navToggle.getAttribute("aria-expanded") === "true";
+      navToggle.setAttribute("aria-expanded", String(!expanded));
+      primaryNav.classList.toggle("is-open", !expanded);
+    });
+  </script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

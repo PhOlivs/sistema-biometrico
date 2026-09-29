@@ -1,57 +1,52 @@
 {% extends "base.html" %}
-
-{% block title %}{{ system_name }} · Terminal de Autenticação Biométrica{% endblock %}
-
+{% block title %}{{ system_name }} · Acesso institucional{% endblock %}
 {% block content %}
-<div class="hero">
-  <div class="hero-content">
-    <p class="hero-eyebrow">Terminal de Acesso: Cofre de Segurança Máxima</p>
-    <h1 class="hero-title">{{ system_name }}</h1>
-    <p class="hero-subtitle">{{ system_subtitle }}</p>
-
-    <p class="hero-description">
-      Este terminal é a última linha de defesa do País contra
-      indivíduos não autorizados. O sistema efetua o processamento da
-      imagem em tempo real para identificar e autenticar o rosto do
-      utilizador. O acesso aos segredos mais sombrios do nosso
-      ecossistema está condicionado a um rigoroso esquema de permissões
-      dividido em três níveis, desde a permissão geral até ao acesso
-      exclusivo da Ministra Dra. Evelyn Castro. O fracasso na
-      autenticação será tratado como uma ameaça de pandemia mundial.
-    </p>
-
-    <div class="hero-actions">
-      <a class="btn btn-primary" href="{{ url_for('authentication') }}">
-        Iniciar Varredura de Reconhecimento Facial
-      </a>
-      <span class="hero-hint">Aviso do Sistema: Sensor de aquisição de imagem atualmente inativo.</span>
+<section class="hero section-shell">
+  <div class="hero-copy">
+    <p class="eyebrow">INSTITUTO ÉGIDE · AMBIENTE ACADÊMICO FICTÍCIO</p>
+    <h1>Identidade verificada.<br><span>Acesso responsável.</span></h1>
+    <p class="lead">Demonstração de um fluxo de identificação biométrica, níveis de autorização e registro de auditoria para informações classificadas fictícias.</p>
+    <div class="button-row">
+      <a class="button button-primary" href="{{ url_for('auth.login') }}">Acessar o sistema</a>
+      <a class="button button-secondary" href="{{ url_for('auth.register') }}">Solicitar credencial</a>
     </div>
+    <p class="fine-print">O cadastro requer análise administrativa. A autenticação facial confirma identidade; não altera o nível de autorização.</p>
   </div>
+  <aside class="hero-panel">
+    <div class="panel-heading"><span class="seal">E</span><div><span class="eyebrow">PROTOCOLO DE ACESSO</span><h2>Princípio de autorização</h2></div></div>
+    <ol class="process-list">
+      <li><span>01</span><div><strong>Credencial</strong><small>Matrícula e senha protegida</small></div></li>
+      <li><span>02</span><div><strong>Identidade</strong><small>Comparação biométrica facial</small></div></li>
+      <li><span>03</span><div><strong>Permissão</strong><small>Nível conferido no servidor</small></div></li>
+      <li><span>04</span><div><strong>Auditoria</strong><small>Eventos relevantes registrados</small></div></li>
+    </ol>
+    <div class="system-status">
+      <span class="status-indicator {{ 'is-ready' if biometric_ready else 'is-warning' }}"></span>
+      <span>Biometria</span>
+      <strong>{{ "Modelos configurados" if biometric_ready else "Configuração necessária" }}</strong>
+    </div>
+  </aside>
+</section>
 
-  <div class="card">
-    <h2 class="card-title">Status do Sistema</h2>
-    <ul class="status-list">
-      <li class="status-item">
-        <span class="status-dot status-dot--ok"></span>
-        <span class="status-label">Sistema operacional</span>
-        <span class="status-value">Ativo</span>
-      </li>
-      <li class="status-item">
-        <span class="status-dot status-dot--pending"></span>
-        <span class="status-label">Reconhecimento facial</span>
-        <span class="status-value">Não implementado</span>
-      </li>
-      <li class="status-item">
-        <span class="status-dot status-dot--pending"></span>
-        <span class="status-label">Controle de acesso</span>
-        <span class="status-value">Não implementado</span>
-      </li>
-      <li class="status-item">
-        <span class="status-dot status-dot--pending"></span>
-        <span class="status-label">Registro de eventos</span>
-        <span class="status-value">Não implementado</span>
-      </li>
-    </ul>
+<section class="section-shell content-section" id="sobre">
+  <div class="section-heading"><p class="eyebrow">SOBRE O PROTÓTIPO</p><h2>Segurança demonstrada com limites explícitos</h2></div>
+  <div class="feature-grid">
+    <article class="feature-card"><span class="feature-number">01</span><h3>Identificação biométrica</h3><p>Capturas em três posições são convertidas em representações faciais protegidas. As imagens não são mantidas após o processamento.</p></article>
+    <article class="feature-card"><span class="feature-number">02</span><h3>Níveis de autorização</h3><p>Níveis 1, 2 e 3 definem quais registros ficcionais podem ser consultados. Um nível superior herda acesso aos inferiores.</p></article>
+    <article class="feature-card"><span class="feature-number">03</span><h3>Revisão e auditoria</h3><p>Cadastros aguardam aprovação e ações administrativas sensíveis permanecem registradas para consulta.</p></article>
   </div>
-</div>
+</section>
+
+<section class="section-shell classification-section" id="classificacao">
+  <div><p class="eyebrow">CLASSIFICAÇÃO</p><h2>Uma hierarquia simples e verificável</h2><p>O sistema verifica a permissão em cada solicitação. O reconhecimento facial nunca concede privilégios adicionais.</p></div>
+  <div class="level-stack">
+    <div><span class="level-badge level-3">Nível 3</span><span>Autorização superior</span></div>
+    <div><span class="level-badge level-2">Nível 2</span><span>Diretorias fictícias</span></div>
+    <div><span class="level-badge level-1">Nível 1</span><span>Acesso geral</span></div>
+  </div>
+</section>
+<section class="disclaimer section-shell">
+  <strong>Importante</strong>
+  <p>Instituto, nomes e registros são fictícios. Este projeto é uma APS e não implementa prova de vida nem oferece garantia de segurança apropriada a sistemas reais.</p>
+</section>
 {% endblock %}

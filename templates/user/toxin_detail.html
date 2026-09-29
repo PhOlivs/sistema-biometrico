@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ toxin.name }} · {{ system_name }}{% endblock %}
+{% block content %}
+<section class="section-shell dashboard-page">
+  <a class="back-link" href="{{ url_for('auth.toxins') }}">← Voltar aos registros</a>
+  <article class="record-detail panel-card">
+    <p class="eyebrow">REGISTRO CENOGRÁFICO · {{ toxin.code }}</p>
+    <div class="record-card-top"><h1>{{ toxin.name }}</h1><span class="level-badge level-{{ toxin.access_level }}">Nível {{ toxin.access_level }}</span></div>
+    <p>{{ toxin.description }}</p>
+    <div class="notice notice-neutral"><strong>Conteúdo seguro para demonstração</strong><span>Este registro é totalmente fictício e não descreve substâncias reais, síntese, aquisição ou utilização.</span></div>
+  </article>
+</section>
+{% endblock %}

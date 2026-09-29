@@ -1,179 +1,261 @@
-"""
-Rotas do painel administrativo (/admin).
+"""Protected administrative dashboard, approvals, user management and audit."""
 
-As rotas apenas recebem a requisição, chamam o user_service e escolhem
-o template. Regras de negócio e SQL não ficam aqui.
-
-ATENÇÃO: nesta fase o painel NÃO possui proteção de acesso. Qualquer
-pessoa que alcance a aplicação consegue abrir /admin. Isso só é aceitável
-em desenvolvimento local. O ponto único para a proteção futura é
-require_admin(), executada antes de TODAS as rotas deste blueprint.
-"""
-
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import (
+    Blueprint, abort, current_app, flash, g, jsonify, redirect, render_template,
+    request, url_for,
+)
 
 from database.database import get_db
-from models.access_level import level_choices
-from models.user import ROLE_LABELS, ROLE_USER
-from services import user_service
-from services.user_service import ValidationError
+from models.user import STATUS_APPROVED
+from services import audit_service, auth_service, user_service
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
-
-RECENT_USERS_ON_DASHBOARD = 5
 
 
 @admin_bp.before_request
 def require_admin():
-    """Ponto único de proteção do painel administrativo.
-
-    Hoje não verifica nada (painel aberto, apenas para desenvolvimento).
-    Quando a autenticação administrativa existir, a verificação entra
-    aqui, por exemplo: `abort(403)` se o usuário atual não for ADMIN.
-    Retornar None significa "acesso liberado".
-    """
+    if g.current_user is None or g.current_user.status != STATUS_APPROVED:
+        return redirect(url_for("auth.login"))
+    if not g.current_user.is_admin:
+        abort(403)
     return None
 
 
-def _form_context(form, errors, user=None):
-    """Variáveis comuns do template do formulário de usuário."""
-    return {
-        "form": form,
-        "errors": errors,
-        "user": user,
-        "roles": list(ROLE_LABELS.items()),
-        "levels": level_choices(),
-    }
-
-
-def _read_form() -> dict:
-    """Lê os campos do formulário como texto bruto (a validação é do serviço)."""
-    return {
-        "name": request.form.get("name", ""),
-        "email": request.form.get("email", ""),
-        "job_title": request.form.get("job_title", ""),
-        "division": request.form.get("division", ""),
-        "role": request.form.get("role", ""),
-        "access_level": request.form.get("access_level", ""),
-    }
-
-
-def _get_user_or_404(user_id: int):
+def _user_or_404(user_id):
     user = user_service.get_user(get_db(), user_id)
     if user is None:
         abort(404)
     return user
 
 
-# ----------------------------------------------------------------------
-# Painel e listagem
-# ----------------------------------------------------------------------
-
-@admin_bp.route("")
+@admin_bp.get("/")
 def dashboard():
     conn = get_db()
     return render_template(
         "admin/dashboard.html",
         stats=user_service.count_users(conn),
-        users=user_service.list_recent_users(conn, RECENT_USERS_ON_DASHBOARD),
+        audit=audit_service.access_summary(conn),
+        users=user_service.list_recent_users(conn, 8),
+        pending_count=user_service.count_users(conn)["pending"],
     )
 
 
-@admin_bp.route("/users")
-def users():
-    return render_template("admin/users.html", users=user_service.list_users(get_db()))
+@admin_bp.get("/solicitacoes")
+def requests_list():
+    conn = get_db()
+    users = user_service.list_pending_users(conn)
+    return render_template(
+        "admin/requests.html",
+        users=users,
+        biometric_statuses={
+            user.id: user_service.biometric_status(conn, user.id) for user in users
+        },
+    )
 
 
-# ----------------------------------------------------------------------
-# Cadastro e edição
-# ----------------------------------------------------------------------
-
-@admin_bp.route("/users/new", methods=["GET", "POST"])
-def new_user():
-    if request.method == "POST":
-        form = _read_form()
-        try:
-            user = user_service.create_user(get_db(), **form)
-        except ValidationError as exc:
-            return render_template("admin/user_form.html", **_form_context(form, exc.errors)), 400
-        flash(
-            f"Dados de {user.name} salvos. Próxima etapa: cadastro biométrico.",
-            "success",
-        )
-        return redirect(url_for("admin.biometric", user_id=user.id))
-
-    form = {
-        "name": "",
-        "email": "",
-        "job_title": "",
-        "division": "",
-        "role": ROLE_USER,
-        "access_level": "1",
-    }
-    return render_template("admin/user_form.html", **_form_context(form, {}))
+@admin_bp.get("/solicitacoes/<int:user_id>")
+def request_detail(user_id):
+    user = _user_or_404(user_id)
+    return render_template(
+        "admin/request_detail.html",
+        user=user,
+        biometric_status=user_service.biometric_status(get_db(), user.id),
+        cpf_masked=_mask_cpf(auth_service.decrypt_sensitive(user.cpf_encrypted)),
+    )
 
 
-@admin_bp.route("/users/<int:user_id>/edit", methods=["GET", "POST"])
-def edit_user(user_id):
-    user = _get_user_or_404(user_id)
-
-    if request.method == "POST":
-        form = _read_form()
-        try:
-            updated = user_service.update_user(get_db(), user_id, **form)
-        except ValidationError as exc:
-            return render_template(
-                "admin/user_form.html", **_form_context(form, exc.errors, user)
-            ), 400
-        flash(f"Usuário {updated.name} atualizado.", "success")
-        return redirect(url_for("admin.users"))
-
-    form = {
-        "name": user.name,
-        "email": user.email,
-        "job_title": user.job_title,
-        "division": user.division,
-        "role": user.role,
-        "access_level": str(user.access_level),
-    }
-    return render_template("admin/user_form.html", **_form_context(form, {}, user))
-
-
-# ----------------------------------------------------------------------
-# Cadastro biométrico (etapa 2 do cadastro)
-# ----------------------------------------------------------------------
-
-@admin_bp.route("/users/<int:user_id>/biometric")
-def biometric(user_id):
-    """Tela do cadastro facial de um usuário já cadastrado.
-
-    Nesta fase a tela apenas exibe a identidade e a câmera. A captura e o
-    processamento do rosto ainda NÃO existem: o botão de captura fica
-    desabilitado até a fase de processamento do frame. O nível de acesso
-    NÃO é definido aqui: quem o define é o administrador, no cadastro.
-    """
-    user = _get_user_or_404(user_id)
-    return render_template("admin/biometric.html", user=user)
-
-
-# ----------------------------------------------------------------------
-# Ativação e desativação
-# ----------------------------------------------------------------------
-
-@admin_bp.route("/users/<int:user_id>/deactivate", methods=["POST"])
-def deactivate_user(user_id):
-    _get_user_or_404(user_id)
+@admin_bp.post("/solicitacoes/<int:user_id>/aprovar")
+def approve(user_id):
     try:
-        user = user_service.deactivate_user(get_db(), user_id)
-        flash(f"Usuário {user.name} desativado.", "success")
-    except ValidationError as exc:
+        user = user_service.approve_user(
+            get_db(), admin_id=g.current_user.id, user_id=user_id
+        )
+    except user_service.ValidationError as exc:
         flash(str(exc), "error")
-    return redirect(url_for("admin.users"))
+        return redirect(url_for("admin.request_detail", user_id=user_id))
+    flash(f"Cadastro de {user.name} aprovado.", "success")
+    return redirect(url_for("admin.requests_list"))
 
 
-@admin_bp.route("/users/<int:user_id>/activate", methods=["POST"])
-def activate_user(user_id):
-    _get_user_or_404(user_id)
-    user = user_service.activate_user(get_db(), user_id)
-    flash(f"Usuário {user.name} reativado.", "success")
-    return redirect(url_for("admin.users"))
+@admin_bp.post("/solicitacoes/<int:user_id>/rejeitar")
+def reject(user_id):
+    try:
+        user = user_service.reject_user(
+            get_db(), admin_id=g.current_user.id, user_id=user_id,
+            reason=request.form.get("reason", ""),
+        )
+    except user_service.ValidationError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("admin.request_detail", user_id=user_id))
+    flash(f"Cadastro de {user.name} rejeitado.", "success")
+    return redirect(url_for("admin.requests_list"))
+
+
+@admin_bp.get("/usuarios")
+def users():
+    status = request.args.get("status") or None
+    level = request.args.get("level", type=int)
+    page = max(1, request.args.get("page", 1, type=int))
+    rows = user_service.list_users(
+        get_db(), status=status, level=level, query=request.args.get("q"),
+        order=request.args.get("order", "name"),
+        direction=request.args.get("direction", "asc"),
+        limit=51, offset=(page - 1) * 50,
+    )
+    return render_template(
+        "admin/users.html",
+        users=rows[:50],
+        has_more=len(rows) > 50,
+        page=page,
+        filters=request.args,
+    )
+
+
+@admin_bp.get("/usuarios/<int:user_id>")
+def user_detail(user_id):
+    user = _user_or_404(user_id)
+    return render_template(
+        "admin/user_detail.html",
+        user=user,
+        biometric_status=user_service.biometric_status(get_db(), user.id),
+        cpf_masked=_mask_cpf(auth_service.decrypt_sensitive(user.cpf_encrypted)),
+        rg_masked=_mask_rg(auth_service.decrypt_sensitive(user.rg_encrypted)),
+    )
+
+
+@admin_bp.route("/usuarios/<int:user_id>/editar", methods=["GET", "POST"])
+def edit_user(user_id):
+    user = _user_or_404(user_id)
+    form = dict(request.form) if request.method == "POST" else {
+        "name": user.name, "email": user.email, "birth_date": user.birth_date or "",
+        "job_title": user.job_title, "division": user.division,
+        "access_level": str(user.access_level), "cpf": "", "rg": "",
+    }
+    errors = {}
+    if request.method == "POST":
+        try:
+            cpf = auth_service.normalize_cpf(form.get("cpf", "")) if form.get("cpf", "").strip() else None
+            birth_date = form.get("birth_date", "").strip() or None
+            if birth_date:
+                birth_date = auth_service.validate_birth_date(birth_date)
+            updated = user_service.update_user(
+                get_db(), admin_id=g.current_user.id, user_id=user_id,
+                name=form.get("name"), email=form.get("email"), birth_date=birth_date,
+                cpf_encrypted=auth_service.encrypt_sensitive(cpf),
+                cpf_digest=auth_service.cpf_digest(cpf) if cpf else None,
+                rg_encrypted=auth_service.encrypt_sensitive(form.get("rg", "").strip() or None),
+                job_title=form.get("job_title"), division=form.get("division"),
+                access_level=form.get("access_level"),
+            )
+        except user_service.ValidationError as exc:
+            errors.update(exc.errors)
+        except ValueError as exc:
+            errors["cpf"] = str(exc)
+        if not errors:
+            flash(f"Perfil de {updated.name} atualizado.", "success")
+            return redirect(url_for("admin.user_detail", user_id=user_id))
+        return render_template("admin/user_form.html", user=user, form=form, errors=errors), 400
+    return render_template("admin/user_form.html", user=user, form=form, errors=errors)
+
+
+@admin_bp.post("/usuarios/<int:user_id>/suspender")
+def suspend_user(user_id):
+    try:
+        user = user_service.set_user_status(
+            get_db(), admin_id=g.current_user.id, user_id=user_id,
+            status="SUSPENDED", reason=request.form.get("reason", ""),
+        )
+    except user_service.ValidationError as exc:
+        flash(str(exc), "error")
+    else:
+        flash(f"Acesso de {user.name} suspenso.", "success")
+    return redirect(url_for("admin.user_detail", user_id=user_id))
+
+
+@admin_bp.post("/usuarios/<int:user_id>/reativar")
+def reactivate_user(user_id):
+    try:
+        user = user_service.set_user_status(
+            get_db(), admin_id=g.current_user.id, user_id=user_id,
+            status=STATUS_APPROVED,
+        )
+    except user_service.ValidationError as exc:
+        flash(str(exc), "error")
+    else:
+        flash(f"Acesso de {user.name} reativado.", "success")
+    return redirect(url_for("admin.user_detail", user_id=user_id))
+
+
+@admin_bp.post("/usuarios/<int:user_id>/desativar")
+def deactivate_user(user_id):
+    try:
+        user = user_service.set_user_status(
+            get_db(), admin_id=g.current_user.id, user_id=user_id,
+            status="INACTIVE", reason=request.form.get("reason", ""),
+        )
+    except user_service.ValidationError as exc:
+        flash(str(exc), "error")
+    else:
+        flash(f"Perfil de {user.name} desativado; o histórico foi preservado.", "success")
+    return redirect(url_for("admin.user_detail", user_id=user_id))
+
+
+@admin_bp.get("/acessos")
+def access_logs():
+    page = max(1, request.args.get("page", 1, type=int))
+    filters = {
+        "event": request.args.get("event") or None,
+        "result": request.args.get("result") or None,
+        "matricula": request.args.get("matricula") or None,
+        "user_query": request.args.get("user") or None,
+        "level": request.args.get("level", type=int),
+        "start": request.args.get("start") or None,
+        "end": request.args.get("end") or None,
+    }
+    rows = audit_service.list_access_logs(
+        get_db(), **filters, limit=51, offset=(page - 1) * 50
+    )
+    return render_template(
+        "admin/access_logs.html",
+        logs=rows[:50],
+        has_more=len(rows) > 50,
+        page=page,
+        filters=request.args,
+    )
+
+
+@admin_bp.get("/api/resumo")
+def api_summary():
+    conn = get_db()
+    return jsonify(users=user_service.count_users(conn), access=audit_service.access_summary(conn))
+
+
+@admin_bp.get("/api/acessos")
+def api_access_logs():
+    return jsonify([
+        dict(row) for row in audit_service.list_access_logs(
+            get_db(),
+            event=request.args.get("event") or None,
+            result=request.args.get("result") or None,
+            matricula=request.args.get("matricula") or None,
+            user_query=request.args.get("user") or None,
+            level=request.args.get("level", type=int),
+            start=request.args.get("start") or None,
+            end=request.args.get("end") or None,
+            limit=request.args.get("limit", default=100, type=int),
+            offset=request.args.get("offset", default=0, type=int),
+        )
+    ])
+
+
+def _mask_cpf(value):
+    if not value:
+        return "Não informado"
+    digits = "".join(char for char in value if char.isdigit())
+    return f"***.***.***-{digits[-2:]}" if len(digits) == 11 else "•••"
+
+
+def _mask_rg(value):
+    if not value:
+        return "Não informado"
+    return f"••••{value[-2:]}" if len(value) > 2 else "•••"

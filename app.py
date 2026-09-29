@@ -1,72 +1,125 @@
-"""
-BIOAUTH - Sistema de Identificação e Autenticação Biométrica
---------------------------------------------------------------
-Protótipo acadêmico desenvolvido para a disciplina de
-Processamento de Imagem e Visão Computacional (PIVC).
+"""BIOAUTH Flask application factory and security middleware."""
 
-Este arquivo é responsável apenas por:
-  - criar e configurar a aplicação Flask (create_app);
-  - preparar o banco de dados;
-  - registrar as rotas.
+import secrets
 
-A lógica de negócio fica em services/, models/ e biometric/.
-As rotas administrativas ficam em routes/admin.py.
-
-FASE ATUAL: Fase 4 - Usuários, administração e níveis de acesso.
-Reconhecimento facial ainda NÃO está implementado.
-"""
-
-from flask import Flask, current_app, render_template
+import click
+from flask import Flask, abort, current_app, g, jsonify, render_template, request, session
 
 from config.config import Config
 from database import database
+from models.user import STATUS_APPROVED
 from routes.admin import admin_bp
-from services import user_service
-
-
-def inject_branding():
-    """Disponibiliza o nome do sistema em todos os templates."""
-    return {
-        "system_name": current_app.config["SYSTEM_NAME"],
-        "system_subtitle": current_app.config["SYSTEM_SUBTITLE"],
-    }
-
-
-def index():
-    """Página inicial do BIOAUTH."""
-    return render_template("index.html")
-
-
-def authentication():
-    """Tela de autenticação (webcam ativa; reconhecimento ainda não implementado)."""
-    return render_template("authentication.html")
+from routes.auth import auth_bp
+from services import audit_service, user_service
+from werkzeug.security import generate_password_hash
 
 
 def create_app(test_config: dict | None = None) -> Flask:
-    """Fábrica da aplicação Flask.
-
-    `test_config` permite que os testes sobrescrevam configurações
-    (por exemplo, apontar DATABASE_PATH para um banco temporário).
-    Nada é criado ao apenas importar este módulo.
-    """
     flask_app = Flask(__name__)
     flask_app.config.from_object(Config)
     if test_config:
         flask_app.config.update(test_config)
+    if not flask_app.config["DEBUG"] and (
+        flask_app.config["SECRET_KEY"] == "desenvolvimento-local-nao-utilizar-em-producao"
+        or not flask_app.config.get("DATA_ENCRYPTION_KEY")
+    ):
+        raise RuntimeError("Configure EGIDE_SECRET_KEY e EGIDE_DATA_ENCRYPTION_KEY fora do modo de desenvolvimento.")
+    flask_app.config.setdefault("MAX_CONTENT_LENGTH", 14 * 1024 * 1024)
+    flask_app.config["SESSION_COOKIE_HTTPONLY"] = True
+    flask_app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    flask_app.config["SESSION_COOKIE_SECURE"] = not flask_app.config["DEBUG"]
 
-    flask_app.context_processor(inject_branding)
+    @flask_app.before_request
+    def protect_requests():
+        user_id = session.get("user_id")
+        g.current_user = user_service.get_user(database.get_db(), user_id) if user_id else None
+        if g.current_user and g.current_user.status != STATUS_APPROVED:
+            session.pop("user_id", None)
+            g.current_user = None
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            expected = session.get("_csrf_token")
+            submitted = request.headers.get("X-CSRFToken")
+            if submitted is None:
+                submitted = request.form.get("csrf_token")
+            if not expected or not submitted or not secrets.compare_digest(expected, submitted):
+                abort(400, description="Token de segurança inválido ou expirado. Atualize a página.")
 
-    # Rotas públicas (os nomes de endpoint são usados por url_for nos templates)
-    flask_app.add_url_rule("/", endpoint="index", view_func=index)
-    flask_app.add_url_rule("/autenticacao", endpoint="authentication", view_func=authentication)
+    @flask_app.after_request
+    def set_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy", "camera=(self), microphone=(), geolocation=()"
+        )
+        return response
+
+    @flask_app.context_processor
+    def inject_template_globals():
+        def csrf_token():
+            if "_csrf_token" not in session:
+                session["_csrf_token"] = secrets.token_urlsafe(32)
+            return session["_csrf_token"]
+
+        return {
+            "system_name": flask_app.config["SYSTEM_NAME"],
+            "system_subtitle": flask_app.config["SYSTEM_SUBTITLE"],
+            "current_user": g.get("current_user"),
+            "csrf_token": csrf_token,
+        }
+
+    @flask_app.errorhandler(403)
+    def forbidden(_error):
+        return render_template("errors/403.html"), 403
+
+    @flask_app.errorhandler(404)
+    def not_found(_error):
+        return render_template("errors/404.html"), 404
+
+    @flask_app.errorhandler(413)
+    def request_too_large(_error):
+        message = "O envio ultrapassa o limite permitido."
+        if request.is_json:
+            return jsonify(error=message), 413
+        return render_template("errors/413.html"), 413
+
+    flask_app.register_blueprint(auth_bp)
     flask_app.register_blueprint(admin_bp)
-
-    # Banco de dados: fechamento automático, tabelas e administrador inicial
     database.init_app(flask_app)
     with flask_app.app_context():
+        database.init_db(database.get_db())
+
+    @flask_app.cli.command("provision-admin")
+    @click.option("--name", prompt="Nome completo")
+    @click.option("--email", prompt="E-mail")
+    def provision_admin(name, email):
+        """Create the first administrator from a local management terminal."""
         conn = database.get_db()
-        database.init_db(conn)
-        user_service.ensure_default_admin(conn)
+        existing = conn.execute(
+            "SELECT COUNT(*) FROM users WHERE role = 'ADMIN' AND status = 'APPROVED' "
+            "AND deleted_at IS NULL"
+        ).fetchone()[0]
+        if existing:
+            raise click.ClickException("Já existe um administrador aprovado; provisionamento inicial recusado.")
+        password = click.prompt("Senha (mínimo de 12 caracteres)", hide_input=True, confirmation_prompt=True)
+        if len(password) < 12:
+            raise click.ClickException("A senha deve ter pelo menos 12 caracteres.")
+        try:
+            user = user_service.create_provisioned_admin(
+                conn, name=name, email=email,
+                password_hash=generate_password_hash(password, method="scrypt"),
+            )
+        except user_service.ValidationError as exc:
+            raise click.ClickException(str(exc)) from exc
+        audit_service.record_admin_action(
+            conn, admin_id=user.id, target_user_id=user.id,
+            action="ADMIN_PROVISIONED",
+            after={"role": user.role, "access_level": user.access_level},
+        )
+        conn.commit()
+        click.echo(
+            f"Administrador criado ({user.matricula}). Conclua o registro facial no primeiro login."
+        )
 
     return flask_app
 

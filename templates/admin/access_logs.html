@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Monitoramento de acessos · {{ system_name }}{% endblock %}
+{% block content %}
+<section class="section-shell dashboard-page">
+  <div class="page-heading"><p class="eyebrow">TRILHA DE AUDITORIA</p><h1>Monitoramento de acessos</h1><p>Filtre os eventos diretamente no banco, sem carregar o histórico completo no navegador.</p></div>
+  <form class="filter-bar filter-bar-wrap" method="get">
+    <label><span>De</span><input type="date" name="start" value="{{ filters.get('start','') }}"></label>
+    <label><span>Até</span><input type="date" name="end" value="{{ filters.get('end','') }}"></label>
+    <label><span>Usuário</span><input name="user" value="{{ filters.get('user','') }}" placeholder="Nome ou matrícula"></label>
+    <label><span>Matrícula</span><input name="matricula" value="{{ filters.get('matricula','') }}" maxlength="20"></label>
+    <label><span>Nível</span><select name="level"><option value="">Todos</option>{% for level in [1,2,3] %}<option value="{{ level }}" {% if filters.get('level')|string == level|string %}selected{% endif %}>Nível {{ level }}</option>{% endfor %}</select></label>
+    <label><span>Resultado</span><select name="result"><option value="">Todos</option>{% for result in ['SUCCESS','DENIED','FAILURE','INFO'] %}<option value="{{ result }}" {% if filters.get('result') == result %}selected{% endif %}>{{ {'SUCCESS':'Permitido','DENIED':'Negado','FAILURE':'Falha','INFO':'Informativo'}[result] }}</option>{% endfor %}</select></label>
+    <label><span>Evento</span><input name="event" value="{{ filters.get('event','') }}" placeholder="Ex.: LOGIN" maxlength="80"></label>
+    <button class="button button-primary" type="submit">Aplicar filtros</button>
+  </form>
+  <div class="panel-card table-panel"><div class="table-wrap"><table><thead><tr><th>Data e hora</th><th>Usuário</th><th>Matrícula</th><th>Nível</th><th>Evento</th><th>Recurso</th><th>Autenticação</th><th>Resultado</th></tr></thead><tbody>
+    {% for log in logs %}<tr><td class="monospace">{{ log.created_at.replace('T',' ') }}</td><td>{{ log.user_name or 'Conta removida' }}</td><td class="monospace">{{ log.matricula or '—' }}</td><td>{{ ('Nível ' ~ log.user_level) if log.user_level else '—' }}</td><td>{{ log.event }}</td><td>{{ log.resource_name or '—' }}</td><td>{{ log.auth_type or '—' }}</td><td><span class="status-badge status-{{ log.result|lower }}">{{ {'SUCCESS':'Permitido','DENIED':'Negado','FAILURE':'Falha','INFO':'Informativo'}.get(log.result, log.result) }}</span></td></tr>
+    {% else %}<tr><td colspan="8" class="empty-cell">Nenhum evento encontrado para estes filtros.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+  <div class="pagination"><span>Página {{ page }}</span><div>{% if page > 1 %}<a class="button button-secondary" href="{{ url_for('admin.access_logs', start=filters.get('start'), end=filters.get('end'), user=filters.get('user'), matricula=filters.get('matricula'), level=filters.get('level'), result=filters.get('result'), event=filters.get('event'), page=page - 1) }}">Anterior</a>{% endif %}{% if has_more %}<a class="button button-secondary" href="{{ url_for('admin.access_logs', start=filters.get('start'), end=filters.get('end'), user=filters.get('user'), matricula=filters.get('matricula'), level=filters.get('level'), result=filters.get('result'), event=filters.get('event'), page=page + 1) }}">Próxima</a>{% endif %}</div></div>
+</section>
+{% endblock %}

@@ -1,0 +1,3 @@
+{% extends "base.html" %}
+{% block title %}Página não encontrada · {{ system_name }}{% endblock %}
+{% block content %}<section class="section-shell error-page"><p class="eyebrow">404 · RECURSO</p><h1>Não encontramos esta página.</h1><p>O endereço pode estar incorreto ou o registro não está disponível.</p><a class="button button-secondary" href="{{ url_for('auth.index') }}">Voltar ao início</a></section>{% endblock %}

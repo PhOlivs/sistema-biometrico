@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Acesso restrito · {{ system_name }}{% endblock %}
+{% block content %}
+<section class="section-shell denied-page">
+  <span class="denied-mark" aria-hidden="true">!</span>
+  <p class="eyebrow">CONTROLE DE ACESSO</p>
+  <h1>Acesso restrito</h1>
+  <p>O recurso solicitado está classificado acima do nível de autorização da sua credencial.</p>
+  <dl class="denied-levels"><div><dt>Nível necessário</dt><dd>Nível {{ required_level }}</dd></div><div><dt>Seu nível</dt><dd>Nível {{ user.access_level }}</dd></div></dl>
+  <p class="notice notice-warning"><strong>Acesso negado.</strong><span>A autenticação confirma identidade, mas não altera permissões. Esta tentativa foi registrada.</span></p>
+  <a class="button button-secondary" href="{{ url_for('auth.toxins') }}">Voltar aos registros disponíveis</a>
+</section>
+{% endblock %}

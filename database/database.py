@@ -1,93 +1,232 @@
-"""
-Persistência SQLite do BIOAUTH.
-
-Este módulo cuida apenas do ARMAZENAMENTO: abrir/fechar conexões e criar
-as tabelas. Regras de negócio (validar e-mail, impedir desativar o último
-administrador, etc.) ficam em services/.
-
-O banco fica em database/bioauth.db (caminho definido em config/config.py)
-e não é versionado no Git.
-"""
+"""SQLite persistence, schema creation and legacy database migration."""
 
 import os
+import re
 import sqlite3
+from datetime import datetime, timezone
 
 from flask import current_app, g
 
-# As restrições CHECK são uma segunda linha de defesa: mesmo que uma
-# validação do backend falhe, o SQLite recusa valores fora do permitido.
-# Os valores abaixo precisam acompanhar models/user.py e models/access_level.py.
 SCHEMA = """
-CREATE TABLE IF NOT EXISTS users (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    name         TEXT    NOT NULL,
-    email        TEXT    NOT NULL UNIQUE COLLATE NOCASE,
-    job_title    TEXT    NOT NULL DEFAULT '',
-    division     TEXT    NOT NULL DEFAULT '',
-    role         TEXT    NOT NULL CHECK (role IN ('ADMIN', 'USER')),
-    access_level INTEGER NOT NULL CHECK (access_level IN (1, 2, 3)),
-    active       INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
-    created_at   TEXT    NOT NULL,
-    updated_at   TEXT    NOT NULL
+CREATE TABLE IF NOT EXISTS security_levels (
+    level INTEGER PRIMARY KEY CHECK (level BETWEEN 1 AND 3),
+    name TEXT NOT NULL UNIQUE
 );
+
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    matricula TEXT UNIQUE,
+    name TEXT NOT NULL,
+    birth_date TEXT,
+    cpf_encrypted TEXT,
+    cpf_digest TEXT UNIQUE,
+    rg_encrypted TEXT,
+    email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    job_title TEXT NOT NULL DEFAULT '',
+    division TEXT NOT NULL DEFAULT '',
+    password_hash TEXT,
+    role TEXT NOT NULL DEFAULT 'USER' CHECK (role IN ('ADMIN', 'USER')),
+    access_level INTEGER NOT NULL CHECK (access_level IN (1, 2, 3)),
+    status TEXT NOT NULL DEFAULT 'PENDING'
+        CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED', 'INACTIVE')),
+    rejection_reason TEXT,
+    active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+    approved_by INTEGER REFERENCES users(id),
+    approved_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    last_activity_at TEXT,
+    deleted_at TEXT,
+    FOREIGN KEY (access_level) REFERENCES security_levels(level)
+);
+
+CREATE TABLE IF NOT EXISTS matricula_counters (
+    access_level INTEGER PRIMARY KEY REFERENCES security_levels(level),
+    last_value INTEGER NOT NULL DEFAULT 0 CHECK (last_value >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS biometric_profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    angle TEXT NOT NULL CHECK (angle IN ('FRONT', 'RIGHT', 'LEFT')),
+    embedding BLOB NOT NULL,
+    model_version TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (user_id, angle)
+);
+
+CREATE TABLE IF NOT EXISTS toxins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    access_level INTEGER NOT NULL REFERENCES security_levels(level),
+    description TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ATIVO' CHECK (status IN ('ATIVO', 'ARQUIVADO'))
+);
+
+CREATE TABLE IF NOT EXISTS access_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    matricula TEXT,
+    event TEXT NOT NULL,
+    result TEXT NOT NULL CHECK (result IN ('SUCCESS', 'DENIED', 'FAILURE', 'INFO')),
+    resource_id INTEGER REFERENCES toxins(id) ON DELETE SET NULL,
+    required_level INTEGER,
+    auth_type TEXT,
+    details TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS admin_actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    target_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    action TEXT NOT NULL,
+    before_data TEXT,
+    after_data TEXT,
+    reason TEXT,
+    result TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
 """
 
-# Colunas acrescentadas depois da primeira versão da tabela. Um banco criado
-# antes de elas existirem as recebe em _add_missing_columns(), sem perder dados.
-COLUMNS_ADDED_LATER = {
-    "job_title": "TEXT NOT NULL DEFAULT ''",
-    "division": "TEXT NOT NULL DEFAULT ''",
+_LEGACY_COLUMNS = {
+    "matricula": "TEXT",
+    "birth_date": "TEXT",
+    "cpf_encrypted": "TEXT",
+    "cpf_digest": "TEXT",
+    "rg_encrypted": "TEXT",
+    "password_hash": "TEXT",
+    "status": "TEXT NOT NULL DEFAULT 'PENDING'",
+    "rejection_reason": "TEXT",
+    "approved_by": "INTEGER REFERENCES users(id)",
+    "approved_at": "TEXT",
+    "last_activity_at": "TEXT",
+    "deleted_at": "TEXT",
 }
+_PREFIXES = {1: "X", 2: "Y", 3: "Z"}
+_MATRICULA_PATTERN = re.compile(r"^[XYZ](\d{3,})$")
+_TOXINS = (
+    (1, "Aster-01", "Registro cenográfico de acesso geral; conteúdo fictício e não operacional."),
+    (1, "Aster-02", "Ficha acadêmica fictícia para demonstração de autorização."),
+    (1, "Aster-03", "Registro demonstrativo sem dados químicos reais."),
+    (1, "Aster-04", "Artefato de catálogo cenográfico para testes de interface."),
+    (1, "Aster-05", "Registro fictício destinado a demonstrar consultas autorizadas."),
+    (2, "Cobalto-01", "Dossiê de cenário fictício; não contém instruções ou dados de produção."),
+    (2, "Cobalto-02", "Registro acadêmico sintético de classificação intermediária."),
+    (2, "Cobalto-03", "Ficha cenográfica para validar filtros e auditoria."),
+    (2, "Cobalto-04", "Descrição deliberadamente não acionável para apresentação acadêmica."),
+    (2, "Cobalto-05", "Registro fictício para demonstração do controle hierárquico."),
+    (3, "Orion-01", "Dossiê cenográfico de acesso superior, sem informação técnica real."),
+    (3, "Orion-02", "Registro fictício para demonstrar permissões de nível máximo."),
+    (3, "Orion-03", "Ficha acadêmica sintética; não representa substância existente."),
+    (3, "Orion-04", "Conteúdo demonstrativo sem dados de aquisição, síntese ou uso."),
+    (3, "Orion-05", "Registro inteiramente fictício para apresentação do protótipo."),
+)
 
 
 def connect(path: str) -> sqlite3.Connection:
-    """Abre uma conexão com o arquivo SQLite indicado.
-
-    Recebe o caminho como parâmetro para que os testes possam usar um
-    banco temporário sem tocar no banco real.
-    """
     directory = os.path.dirname(path)
     if directory:
         os.makedirs(directory, exist_ok=True)
-
-    conn = sqlite3.connect(path)
-    conn.row_factory = sqlite3.Row  # permite acessar colunas por nome
+    conn = sqlite3.connect(path, timeout=10)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
     return conn
 
 
-def _add_missing_columns(conn: sqlite3.Connection) -> None:
-    """Migração mínima: acrescenta colunas novas a um banco mais antigo.
-
-    Os nomes e definições vêm de COLUMNS_ADDED_LATER (constante do código,
-    nunca de entrada do usuário), por isso a montagem do SQL é segura.
-    """
-    existing = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
-    for column, definition in COLUMNS_ADDED_LATER.items():
+def _add_legacy_columns(conn: sqlite3.Connection) -> None:
+    existing = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
+    had_status_column = "status" in existing
+    for column, definition in _LEGACY_COLUMNS.items():
         if column not in existing:
             conn.execute(f"ALTER TABLE users ADD COLUMN {column} {definition}")
+    return not had_status_column
+
+
+def _migrate_legacy_users(conn: sqlite3.Connection, migrate_status: bool) -> None:
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    rows = conn.execute(
+        "SELECT id, access_level, role, active, matricula, status FROM users ORDER BY id"
+    ).fetchall()
+    counters = {1: 0, 2: 0, 3: 0}
+    for row in rows:
+        level = row["access_level"] if row["access_level"] in _PREFIXES else 1
+        existing = row["matricula"]
+        if existing and _MATRICULA_PATTERN.fullmatch(existing):
+            counters[level] = max(counters[level], int(existing[1:]))
+        elif existing:
+            existing = None
+        if not existing:
+            counters[level] += 1
+            existing = f"{_PREFIXES[level]}{counters[level]:03d}"
+
+        status = row["status"]
+        if migrate_status:
+            if row["role"] == "ADMIN":
+                status = "INACTIVE"
+            else:
+                status = "APPROVED" if row["active"] else "SUSPENDED"
+        conn.execute(
+            "UPDATE users SET matricula = ?, status = ?, active = ?, updated_at = COALESCE(updated_at, ?) "
+            "WHERE id = ?",
+            (existing, status, int(status in ("APPROVED", "PENDING")) if migrate_status
+             else row["active"], now, row["id"]),
+        )
+    for level, value in counters.items():
+        conn.execute(
+            "INSERT INTO matricula_counters(access_level, last_value) VALUES (?, ?) "
+            "ON CONFLICT(access_level) DO UPDATE SET last_value = MAX(last_value, excluded.last_value)",
+            (level, value),
+        )
 
 
 def init_db(conn: sqlite3.Connection) -> None:
-    """Cria as tabelas e atualiza bancos antigos (é seguro chamar sempre)."""
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA)
-    _add_missing_columns(conn)
+    migrate_status = _add_legacy_columns(conn)
+    conn.executemany(
+        "INSERT OR IGNORE INTO security_levels(level, name) VALUES (?, ?)",
+        ((1, "Acesso geral"), (2, "Acesso de diretoria"), (3, "Acesso ministerial")),
+    )
+    conn.executescript(
+        """
+        CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
+        CREATE INDEX IF NOT EXISTS idx_users_level ON users(access_level);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_users_matricula ON users(matricula);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_users_cpf_digest ON users(cpf_digest);
+        CREATE INDEX IF NOT EXISTS idx_access_logs_created ON access_logs(created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_access_logs_event_result ON access_logs(event, result);
+        CREATE INDEX IF NOT EXISTS idx_admin_actions_created ON admin_actions(created_at DESC);
+        """
+    )
+    conn.executemany(
+        "INSERT OR IGNORE INTO matricula_counters(access_level, last_value) VALUES (?, 0)",
+        ((1,), (2,), (3,)),
+    )
+    _migrate_legacy_users(conn, migrate_status)
+    conn.executemany(
+        "INSERT OR IGNORE INTO toxins(code, name, access_level, description) VALUES (?, ?, ?, ?)",
+        ((f"{name.upper().replace('-', '')}", name, level, description)
+         for level, name, description in _TOXINS),
+    )
     conn.commit()
 
 
 def get_db() -> sqlite3.Connection:
-    """Conexão da requisição atual (aberta na primeira chamada)."""
     if "db" not in g:
         g.db = connect(current_app.config["DATABASE_PATH"])
     return g.db
 
 
 def close_db(_error=None) -> None:
-    """Fecha a conexão ao final da requisição."""
     conn = g.pop("db", None)
     if conn is not None:
         conn.close()
 
 
 def init_app(app) -> None:
-    """Registra o fechamento automático da conexão no Flask."""
     app.teardown_appcontext(close_db)

@@ -1,0 +1,3 @@
+{% extends "base.html" %}
+{% block title %}Envio muito grande · {{ system_name }}{% endblock %}
+{% block content %}<section class="section-shell error-page"><p class="eyebrow">413 · TAMANHO DO ENVIO</p><h1>Não foi possível processar as imagens.</h1><p>O total enviado excede o limite do protótipo. Reduza a resolução das capturas e tente novamente.</p><a class="button button-secondary" href="{{ url_for('auth.index') }}">Voltar ao início</a></section>{% endblock %}

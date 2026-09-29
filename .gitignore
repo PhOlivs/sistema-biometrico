@@ -8,11 +8,15 @@ __pycache__/
 
 # Banco de dados local
 database/*.db
+database/*.db-*
 database/*.sqlite
+database/*.sqlite-*
 database/*.sqlite3
 
 # Dados biométricos
 data/faces/*
+data/models/*
+*.onnx
 
 # Variáveis de ambiente
 .env

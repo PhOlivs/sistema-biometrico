@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Solicitar acesso · {{ system_name }}{% endblock %}
+{% block content %}
+<section class="section-shell form-page">
+  <div class="page-heading"><p class="eyebrow">NOVO CADASTRO</p><h1>Solicitar credencial</h1><p>Preencha os dados para iniciar a análise. O acesso só será liberado após o registro facial e a aprovação administrativa.</p></div>
+  <form id="registration-form" class="form-card form-grid" method="post" action="{{ url_for('auth.register') }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if errors %}<div class="alert alert--error form-span" role="alert">Revise os campos indicados abaixo.</div>{% endif %}
+    <div class="field">
+      <label for="name">Nome completo</label>
+      <input id="name" name="name" value="{{ form.get('name', '') }}" required maxlength="120" autocomplete="name">
+      {% if errors.get('name') %}<small class="field-error">{{ errors.name }}</small>{% endif %}
+    </div>
+    <div class="field">
+      <label for="birth_date">Data de nascimento</label>
+      <input id="birth_date" name="birth_date" type="date" value="{{ form.get('birth_date', '') }}" required>
+      {% if errors.get('birth_date') %}<small class="field-error">{{ errors.birth_date }}</small>{% endif %}
+    </div>
+    <div class="field">
+      <label for="cpf">CPF</label>
+      <input id="cpf" name="cpf" inputmode="numeric" autocomplete="off" required maxlength="14" placeholder="000.000.000-00">
+      {% if errors.get('cpf') %}<small class="field-error">{{ errors.cpf }}</small>{% endif %}
+      <small>Armazenado de forma protegida e não exibido na listagem.</small>
+    </div>
+    <div class="field">
+      <label for="rg">RG <span class="optional">(opcional)</span></label>
+      <input id="rg" name="rg" autocomplete="off" maxlength="32">
+      {% if errors.get('rg') %}<small class="field-error">{{ errors.rg }}</small>{% endif %}
+    </div>
+    <div class="field">
+      <label for="job_title">Cargo</label>
+      <input id="job_title" name="job_title" value="{{ form.get('job_title', '') }}" required maxlength="120">
+      {% if errors.get('job_title') %}<small class="field-error">{{ errors.job_title }}</small>{% endif %}
+    </div>
+    <div class="field">
+      <label for="division">Divisão / setor</label>
+      <input id="division" name="division" value="{{ form.get('division', '') }}" required maxlength="120">
+      {% if errors.get('division') %}<small class="field-error">{{ errors.division }}</small>{% endif %}
+    </div>
+    <div class="field">
+      <label for="email">E-mail institucional</label>
+      <input id="email" name="email" type="email" value="{{ form.get('email', '') }}" autocomplete="email" required maxlength="254">
+      {% if errors.get('email') %}<small class="field-error">{{ errors.email }}</small>{% endif %}
+    </div>
+    <div class="field">
+      <label for="access_level">Nível solicitado</label>
+      <select id="access_level" name="access_level" required>
+        {% for level, label in [(1, 'Nível 1 — Acesso geral'), (2, 'Nível 2 — Diretoria'), (3, 'Nível 3 — Ministério')] %}
+          <option value="{{ level }}" {% if form.get('access_level', '1')|string == level|string %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      {% if errors.get('access_level') %}<small class="field-error">{{ errors.access_level }}</small>{% endif %}
+    </div>
+    <div class="field">
+      <label for="password">Senha</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+      <small>Mínimo de 12 caracteres.</small>
+      {% if errors.get('password') %}<small class="field-error">{{ errors.password }}</small>{% endif %}
+    </div>
+    <div class="field">
+      <label for="password_confirmation">Confirme a senha</label>
+      <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+      {% if errors.get('password_confirmation') %}<small class="field-error">{{ errors.password_confirmation }}</small>{% endif %}
+    </div>
+    <div class="notice notice-warning form-span"><strong>Proteção de dados</strong><span>Este é um protótipo acadêmico. Não utilize dados pessoais reais em demonstrações públicas.</span></div>
+    <div class="form-actions form-span"><a class="button button-secondary" href="{{ url_for('auth.index') }}">Cancelar</a><button class="button button-primary" type="submit">Continuar para registro facial</button></div>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/forms.js') }}" defer></script>{% endblock %}

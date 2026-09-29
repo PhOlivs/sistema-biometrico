@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Analisar cadastro · {{ system_name }}{% endblock %}
+{% block content %}
+<section class="section-shell dashboard-page">
+  <a class="back-link" href="{{ url_for('admin.requests_list') }}">← Voltar às solicitações</a>
+  <div class="page-heading"><p class="eyebrow">ANÁLISE ADMINISTRATIVA</p><h1>{{ user.name }}</h1><p>Matrícula {{ user.matricula }} · Solicitado em {{ user.created_at[:10] }}</p></div>
+  <div class="admin-overview">
+    <article class="panel-card"><p class="eyebrow">DADOS DO CADASTRO</p><dl class="detail-grid">
+      <div><dt>Nome completo</dt><dd>{{ user.name }}</dd></div><div><dt>Matrícula</dt><dd>{{ user.matricula }}</dd></div>
+      <div><dt>Nível solicitado</dt><dd>Nível {{ user.access_level }}</dd></div><div><dt>Cargo</dt><dd>{{ user.job_title }}</dd></div>
+      <div><dt>Divisão</dt><dd>{{ user.division }}</dd></div><div><dt>E-mail</dt><dd>{{ user.email }}</dd></div>
+      <div><dt>Data de nascimento</dt><dd>{{ user.birth_date or 'Não informado' }}</dd></div>
+      <div><dt>CPF</dt><dd>{{ cpf_masked }}</dd></div><div><dt>Biometria</dt><dd>{{ biometric_status }}</dd></div>
+    </dl></article>
+    <article class="panel-card decision-card"><p class="eyebrow">DECISÃO</p><h2>Status: {{ user.status_label }}</h2>
+      <p>A aprovação habilita login após a validação de senha e biometria. Rejeições exigem justificativa e são auditadas.</p>
+      <form method="post" action="{{ url_for('admin.approve', user_id=user.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="button button-primary button-full" type="submit" {% if biometric_status != 'CADASTRADA' %}disabled{% endif %}>Aprovar cadastro</button></form>
+      {% if biometric_status != 'CADASTRADA' %}<small class="field-error">As três capturas faciais são necessárias antes da aprovação.</small>{% endif %}
+      <form method="post" action="{{ url_for('admin.reject', user_id=user.id) }}" class="stacked-form" data-confirm="Rejeitar esta solicitação?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="reason">Justificativa da rejeição</label><textarea id="reason" name="reason" rows="3" required maxlength="500"></textarea>
+        <button class="button button-danger button-full" type="submit">Rejeitar cadastro</button>
+      </form>
+    </article>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/forms.js') }}" defer></script>{% endblock %}

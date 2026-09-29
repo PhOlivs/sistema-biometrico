@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{{ "Registro biométrico" if mode != "verify" else "Autenticação facial" }} · {{ system_name }}{% endblock %}
+{% block content %}
+<section class="section-shell camera-page">
+  <div class="page-heading">
+    <p class="eyebrow">{{ "ETAPA BIOMÉTRICA" if mode != "verify" else "SEGUNDO FATOR" }}</p>
+    <h1>
+      {% if mode == "verify" %}Confirme sua identidade
+      {% elif mode == "setup" %}Configure a biometria administrativa
+      {% else %}Registre sua biometria facial{% endif %}
+    </h1>
+    <p>
+      {% if mode == "verify" %}Enquadre o rosto de frente para concluir o login.
+      {% else %}Serão feitas três capturas guiadas: frontal, lateral direita e lateral esquerda.{% endif %}
+    </p>
+  </div>
+  {% if not biometric_ready %}
+    <div class="notice notice-warning"><strong>Modelos não configurados</strong><span>O fluxo está bloqueado até que os modelos YuNet e SFace estejam instalados conforme o README. Nenhuma autorização será concedida sem reconhecimento.</span></div>
+  {% endif %}
+  <div class="camera-workspace" id="biometric-capture"
+       data-mode="{{ mode }}"
+       data-enroll-url="{{ url_for('auth.enroll_biometric') }}"
+       data-verify-url="{{ url_for('auth.verify_login_face') }}"
+       data-setup-url="{{ url_for('auth.setup_admin_biometric') }}"
+       data-ready="{{ 'true' if biometric_ready else 'false' }}">
+    <div class="camera-frame">
+      <video id="camera-feed" autoplay playsinline muted></video>
+      <div class="camera-guide" aria-hidden="true"></div>
+      <div id="camera-placeholder" class="camera-placeholder">
+        <span class="camera-placeholder-mark">◎</span>
+        <strong id="camera-status-text">Conectando à câmera…</strong>
+        <small id="camera-status-hint">Permita o acesso à câmera para continuar.</small>
+      </div>
+      <span class="camera-live"><i></i> CAPTURA LOCAL</span>
+    </div>
+    <aside class="camera-side">
+      <span class="eyebrow">IDENTIDADE</span>
+      <h2>{{ user.name }}</h2>
+      <dl class="identity-summary"><div><dt>Matrícula</dt><dd>{{ user.matricula }}</dd></div><div><dt>Nível</dt><dd>{{ user.access_level_label }}</dd></div></dl>
+      <div class="capture-progress" id="capture-progress" {% if mode == 'verify' %}hidden{% endif %}>
+        <div class="capture-progress-heading"><span id="capture-step">ETAPA 1 DE 3</span><span id="capture-angle">FRONTAL</span></div>
+        <div class="progress-track"><span id="progress-fill"></span></div>
+      </div>
+      <p class="camera-instruction" id="camera-instruction">
+        {% if mode == "verify" %}Olhe diretamente para a câmera, com boa iluminação.
+        {% else %}Olhe diretamente para a câmera e mantenha o rosto dentro da moldura.{% endif %}
+      </p>
+      <p id="camera-feedback" class="camera-feedback" role="status" aria-live="polite"></p>
+      <button id="capture-button" class="button button-primary button-full" type="button" disabled>
+        {% if mode == "verify" %}Verificar identidade{% else %}Capturar rosto frontal{% endif %}
+      </button>
+      <a class="button button-secondary button-full" href="{{ url_for('auth.login') if mode == 'verify' else url_for('auth.index') }}">Cancelar</a>
+      <p class="fine-print">A imagem é processada para gerar uma representação matemática protegida. O protótipo não implementa prova de vida.</p>
+    </aside>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/camera.js') }}" defer></script>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Meu perfil · {{ system_name }}{% endblock %}
+{% block content %}
+<section class="section-shell dashboard-page">
+  <div class="page-heading"><p class="eyebrow">IDENTIDADE</p><h1>Meu perfil</h1><p>Dados pessoais são limitados ao necessário para esta demonstração.</p></div>
+  <dl class="detail-grid panel-card">
+    <div><dt>Nome completo</dt><dd>{{ user.name }}</dd></div>
+    <div><dt>Matrícula</dt><dd>{{ user.matricula }}</dd></div>
+    <div><dt>Cargo</dt><dd>{{ user.job_title }}</dd></div>
+    <div><dt>Divisão</dt><dd>{{ user.division }}</dd></div>
+    <div><dt>E-mail</dt><dd>{{ user.email }}</dd></div>
+    <div><dt>Nível de segurança</dt><dd><span class="level-badge level-{{ user.access_level }}">Nível {{ user.access_level }}</span></dd></div>
+    <div><dt>Status</dt><dd><span class="status-badge status-approved">{{ user.status_label }}</span></dd></div>
+    <div><dt>Biometria</dt><dd>Registrada</dd></div>
+  </dl>
+</section>
+{% endblock %}

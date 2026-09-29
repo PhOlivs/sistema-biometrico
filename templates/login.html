@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Entrar · {{ system_name }}{% endblock %}
+{% block content %}
+<section class="auth-shell section-shell">
+  <div class="auth-intro">
+    <p class="eyebrow">ÁREA RESTRITA</p>
+    <h1>Acesso institucional</h1>
+    <p>Use sua matrícula e senha. A autenticação facial será solicitada após a validação das credenciais.</p>
+    <div class="notice notice-neutral"><strong>Privacidade</strong><span>As senhas são armazenadas por hash. Nunca informe sua senha a terceiros.</span></div>
+  </div>
+  <form class="form-card" method="post" action="{{ url_for('auth.login') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h2>Identificação</h2>
+    {% if error %}<p class="alert alert--error" role="alert">{{ error }}</p>{% endif %}
+    <label for="matricula">Matrícula</label>
+    <input id="matricula" name="matricula" value="{{ matricula }}" autocomplete="username" required maxlength="20" placeholder="X001">
+    <label for="password">Senha</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button class="button button-primary button-full" type="submit">Continuar para biometria</button>
+    <p class="form-footnote">Ainda não possui credencial? <a href="{{ url_for('auth.register') }}">Solicite um cadastro</a>.</p>
+  </form>
+</section>
+{% endblock %}

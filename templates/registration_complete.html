@@ -5,9 +5,9 @@
   <span class="success-mark" aria-hidden="true">✓</span>
   <p class="eyebrow">SOLICITAÇÃO REGISTRADA</p>
   <h1>Cadastro realizado com sucesso.</h1>
-  <p>Seu registro foi encaminhado para análise administrativa. O acesso ao sistema permanece bloqueado até a aprovação.</p>
-  <dl class="success-details"><div><dt>Nome</dt><dd>{{ result.name }}</dd></div><div><dt>Nível solicitado</dt><dd>Nível {{ result.level }}</dd></div><div><dt>Matrícula</dt><dd class="matricula">{{ result.matricula }}</dd></div></dl>
-  <p class="notice notice-neutral">Guarde a matrícula. Ela será utilizada no login após a aprovação do cadastro.</p>
+  <p>Seu registro foi encaminhado para análise administrativa. O acesso permanece bloqueado até a aprovação e a atribuição de um nível de segurança.</p>
+  <dl class="success-details"><div><dt>Nome</dt><dd>{{ result.name }}</dd></div><div><dt>Status</dt><dd>Aguardando análise</dd></div><div><dt>Nível e matrícula</dt><dd>A definir pela administração</dd></div></dl>
+  <p class="notice notice-neutral">Após a aprovação, a administração fornecerá sua matrícula institucional, que será usada no login.</p>
   <a class="button button-primary" href="{{ url_for('auth.index') }}">Voltar ao início</a>
 </section>
 {% endblock %}

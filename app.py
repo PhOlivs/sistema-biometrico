@@ -24,7 +24,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         or not flask_app.config.get("DATA_ENCRYPTION_KEY")
     ):
         raise RuntimeError("Configure EGIDE_SECRET_KEY e EGIDE_DATA_ENCRYPTION_KEY fora do modo de desenvolvimento.")
-    flask_app.config.setdefault("MAX_CONTENT_LENGTH", 14 * 1024 * 1024)
+    flask_app.config.setdefault("MAX_CONTENT_LENGTH", 18 * 1024 * 1024)
     flask_app.config["SESSION_COOKIE_HTTPONLY"] = True
     flask_app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     flask_app.config["SESSION_COOKIE_SECURE"] = not flask_app.config["DEBUG"]
@@ -91,7 +91,7 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @flask_app.cli.command("provision-admin")
     @click.option("--name", prompt="Nome completo")
-    @click.option("--email", prompt="E-mail")
+    @click.option("--email", prompt="E-mail institucional (@egíde.com.br)")
     def provision_admin(name, email):
         """Create the first administrator from a local management terminal."""
         conn = database.get_db()

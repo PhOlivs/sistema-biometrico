@@ -86,8 +86,6 @@ def enroll_biometric():
     session.pop("registration_user_id", None)
     session["registration_result"] = {
         "name": user.name,
-        "matricula": user.matricula,
-        "level": user.access_level,
     }
     return jsonify(redirect=url_for("auth.registration_complete"))
 
@@ -128,8 +126,12 @@ def authentication():
         flash("Seu perfil biométrico não está completo. Procure a administração.", "error")
         session.pop("pending_auth_user_id", None)
         return redirect(url_for("auth.login"))
+    mode = "setup" if profile_count != 3 and user.is_admin else "verify"
+    challenge = biometric_service.create_liveness_challenge() if mode == "verify" else []
+    if challenge:
+        session["face_liveness_challenge"] = challenge
     return render_template(
-        "biometric_capture.html", mode="setup" if profile_count != 3 and user.is_admin else "verify", user=user,
+        "biometric_capture.html", mode=mode, user=user, liveness_challenge=challenge,
         biometric_ready=biometric_service.is_available(current_app.config),
     )
 
@@ -140,22 +142,30 @@ def verify_login_face():
     user = user_service.get_user(get_db(), pending_id) if pending_id else None
     if user is None or user.status != STATUS_APPROVED:
         return jsonify(error="A etapa de senha expirou. Entre novamente."), 401
+    challenge = session.pop("face_liveness_challenge", None)
+    next_challenge = biometric_service.create_liveness_challenge()
+    session["face_liveness_challenge"] = next_challenge
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
-        return jsonify(error="Envie um objeto JSON com a captura facial."), 400
+        return jsonify(
+            error="Envie a captura facial e as imagens do desafio de presença.",
+            challenge=next_challenge,
+        ), 400
     try:
-        recognized, _similarity = biometric_service.verify_user(
+        recognized, scores = biometric_service.verify_user(
             get_db(), user_id=user.id, frame=payload.get("image", ""),
+            liveness_frames=payload.get("liveness_images"),
+            challenge=challenge,
             config=current_app.config,
         )
     except ValueError as exc:
         audit_service.record_access(
             get_db(), event="BIOMETRIC_AUTHENTICATION", result="FAILURE",
             user_id=user.id, matricula=user.matricula, auth_type="FACE",
-            details={"reason": str(exc)},
+            details={"reason": str(exc), "liveness_challenge": challenge},
         )
         get_db().commit()
-        return jsonify(error=str(exc)), 400
+        return jsonify(error=str(exc), challenge=next_challenge), 400
     except RuntimeError as exc:
         current_app.logger.error("Biometric verification unavailable: %s", exc)
         audit_service.record_access(
@@ -164,15 +174,29 @@ def verify_login_face():
             details={"reason": "BIOMETRIC_ENGINE_UNAVAILABLE"},
         )
         get_db().commit()
-        return jsonify(error=str(exc)), 503
+        return jsonify(
+            error=str(exc), challenge=next_challenge,
+        ), 503
+    score_details = {
+        key.lower(): round(value, 6)
+        for key, value in scores.items()
+    }
     audit_service.record_access(
         get_db(), event="BIOMETRIC_AUTHENTICATION",
         result="SUCCESS" if recognized else "FAILURE",
         user_id=user.id, matricula=user.matricula, auth_type="FACE",
+        details={
+            "liveness": "passed",
+            "liveness_challenge": challenge,
+            "face_scores": score_details,
+        },
     )
     get_db().commit()
     if not recognized:
-        return jsonify(error="A biometria não foi confirmada. Tente novamente."), 401
+        return jsonify(
+            error="A biometria não foi confirmada. Siga o novo desafio e tente novamente.",
+            challenge=next_challenge,
+        ), 401
     session.clear()
     session["user_id"] = user.id
     session.permanent = True

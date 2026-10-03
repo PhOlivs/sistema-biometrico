@@ -2,12 +2,14 @@
 
 from flask import (
     Blueprint, abort, current_app, flash, g, jsonify, redirect, render_template,
-    request, url_for,
+    request, send_file, url_for,
 )
+import base64
+from io import BytesIO
 
 from database.database import get_db
 from models.user import STATUS_APPROVED
-from services import audit_service, auth_service, user_service
+from services import audit_service, auth_service, organization_service, user_service
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -61,19 +63,49 @@ def request_detail(user_id):
         user=user,
         biometric_status=user_service.biometric_status(get_db(), user.id),
         cpf_masked=_mask_cpf(auth_service.decrypt_sensitive(user.cpf_encrypted)),
+        organization_options=organization_service.get_assignment_options(get_db()),
+        form={},
+        errors={},
     )
+
+
+@admin_bp.get("/usuarios/<int:user_id>/foto")
+def user_photo(user_id):
+    user = _user_or_404(user_id)
+    if not user.profile_photo_encrypted:
+        abort(404)
+    try:
+        encoded = auth_service.decrypt_sensitive(
+            bytes(user.profile_photo_encrypted).decode("ascii")
+        )
+        photo = base64.b64decode(encoded, validate=True)
+    except (ValueError, UnicodeDecodeError):
+        current_app.logger.error("Stored profile image for user %s is invalid.", user_id)
+        abort(500)
+    response = send_file(BytesIO(photo), mimetype="image/jpeg", max_age=0)
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
 
 
 @admin_bp.post("/solicitacoes/<int:user_id>/aprovar")
 def approve(user_id):
     try:
         user = user_service.approve_user(
-            get_db(), admin_id=g.current_user.id, user_id=user_id
+            get_db(), admin_id=g.current_user.id, user_id=user_id,
+            access_level=None,
+            position_code=request.form.get("position_code"),
+            area_id=request.form.get("area_id"),
+            team_id=request.form.get("team_id"),
+            manager_user_id=request.form.get("manager_user_id"),
         )
     except user_service.ValidationError as exc:
         flash(str(exc), "error")
         return redirect(url_for("admin.request_detail", user_id=user_id))
-    flash(f"Cadastro de {user.name} aprovado.", "success")
+    flash(
+        f"Cadastro de {user.name} aprovado. Matrícula {user.matricula}; "
+        "informe a matrícula ao usuário pelo canal institucional.",
+        "success",
+    )
     return redirect(url_for("admin.requests_list"))
 
 
@@ -102,12 +134,17 @@ def users():
         direction=request.args.get("direction", "asc"),
         limit=51, offset=(page - 1) * 50,
     )
+    view = request.args.get("view", "table")
     return render_template(
         "admin/users.html",
         users=rows[:50],
         has_more=len(rows) > 50,
         page=page,
         filters=request.args,
+        view=view,
+        organization_chart=(
+            organization_service.get_org_chart(get_db()) if view == "chart" else None
+        ),
     )
 
 
@@ -129,7 +166,12 @@ def edit_user(user_id):
     form = dict(request.form) if request.method == "POST" else {
         "name": user.name, "email": user.email, "birth_date": user.birth_date or "",
         "job_title": user.job_title, "division": user.division,
-        "access_level": str(user.access_level), "cpf": "", "rg": "",
+        "access_level": str(user.access_level) if user.access_level is not None else "",
+        "cpf": "", "rg": "",
+        "position_code": user.position_code or "",
+        "area_id": str(user.area_id) if user.area_id else "",
+        "team_id": str(user.team_id) if user.team_id else "",
+        "manager_user_id": str(user.manager_user_id) if user.manager_user_id else "",
     }
     errors = {}
     if request.method == "POST":
@@ -145,7 +187,13 @@ def edit_user(user_id):
                 cpf_digest=auth_service.cpf_digest(cpf) if cpf else None,
                 rg_encrypted=auth_service.encrypt_sensitive(form.get("rg", "").strip() or None),
                 job_title=form.get("job_title"), division=form.get("division"),
-                access_level=form.get("access_level"),
+                access_level=form.get("access_level") or user.access_level,
+                org_assignment={
+                    "position_code": form.get("position_code"),
+                    "area_id": form.get("area_id"),
+                    "team_id": form.get("team_id"),
+                    "manager_user_id": form.get("manager_user_id"),
+                },
             )
         except user_service.ValidationError as exc:
             errors.update(exc.errors)
@@ -154,8 +202,18 @@ def edit_user(user_id):
         if not errors:
             flash(f"Perfil de {updated.name} atualizado.", "success")
             return redirect(url_for("admin.user_detail", user_id=user_id))
-        return render_template("admin/user_form.html", user=user, form=form, errors=errors), 400
-    return render_template("admin/user_form.html", user=user, form=form, errors=errors)
+        return render_template(
+            "admin/user_form.html", user=user, form=form, errors=errors,
+            organization_options=organization_service.get_assignment_options(
+                get_db(), exclude_user_id=user_id
+            ),
+        ), 400
+    return render_template(
+        "admin/user_form.html", user=user, form=form, errors=errors,
+        organization_options=organization_service.get_assignment_options(
+            get_db(), exclude_user_id=user_id
+        ),
+    )
 
 
 @admin_bp.post("/usuarios/<int:user_id>/suspender")

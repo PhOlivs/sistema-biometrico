@@ -85,7 +85,7 @@ def list_access_logs(conn, *, event=None, result=None, matricula=None, user_quer
         needle = f"%{user_query.strip()}%"
         params.extend((needle, needle))
     if level in (1, 2, 3):
-        clauses.append("u.access_level = ?")
+        clauses.append("u.access_level_assigned = 1 AND u.access_level = ?")
         params.append(level)
     if start:
         clauses.append("l.created_at >= ?")
@@ -95,7 +95,8 @@ def list_access_logs(conn, *, event=None, result=None, matricula=None, user_quer
         params.append(f"{end}T24" if len(end) == 10 else end)
     return conn.execute(
         f"""
-        SELECT l.*, u.name AS user_name, u.access_level AS user_level,
+        SELECT l.*, u.name AS user_name,
+               CASE WHEN u.access_level_assigned = 1 THEN u.access_level END AS user_level,
                t.name AS resource_name
         FROM access_logs l
         LEFT JOIN users u ON u.id = l.user_id
@@ -122,8 +123,9 @@ def access_summary(conn) -> dict:
     by_level = {
         row["user_level"]: row["count"]
         for row in conn.execute(
-            "SELECT u.access_level user_level, COUNT(*) count FROM access_logs l "
-            "JOIN users u ON u.id = l.user_id GROUP BY u.access_level"
+            "SELECT CASE WHEN u.access_level_assigned = 1 THEN u.access_level END user_level, "
+            "COUNT(*) count FROM access_logs l JOIN users u ON u.id = l.user_id "
+            "GROUP BY CASE WHEN u.access_level_assigned = 1 THEN u.access_level END"
         )
     }
     return {

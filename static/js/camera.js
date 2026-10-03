@@ -21,7 +21,9 @@
     { key: "RIGHT", title: "lateral direita", instruction: "Vire lentamente o rosto para a direita." },
     { key: "LEFT", title: "lateral esquerda", instruction: "Vire lentamente o rosto para a esquerda." },
   ];
+  let challenge = JSON.parse(workspace.dataset.challenge || "[]");
   const frames = {};
+  const livenessFrames = [];
   let angleIndex = 0;
   let stream;
   let busy = false;
@@ -32,6 +34,25 @@
   }
 
   function updateProgress() {
+    if (mode === "verify") {
+      const actions = [...challenge, "FRONT"];
+      const key = actions[angleIndex];
+      const actionTitle = {
+        RIGHT: "vire à direita",
+        LEFT: "vire à esquerda",
+        FRONT: "frontal",
+      }[key];
+      stepLabel.textContent = `ETAPA ${angleIndex + 1} DE ${actions.length}`;
+      angleLabel.textContent = actionTitle.toLocaleUpperCase("pt-BR");
+      instruction.textContent = key === "FRONT"
+        ? "Agora olhe diretamente para a câmera, com boa iluminação."
+        : `Vire lentamente o rosto para ${key === "RIGHT" ? "a direita" : "a esquerda"}.`;
+      button.textContent = key === "FRONT"
+        ? "Capturar rosto frontal"
+        : `Confirmar movimento: ${actionTitle}`;
+      progressFill.style.width = `${(angleIndex / actions.length) * 100}%`;
+      return;
+    }
     const angle = angles[angleIndex];
     stepLabel.textContent = `ETAPA ${angleIndex + 1} DE ${angles.length}`;
     angleLabel.textContent = angle.title.toLocaleUpperCase("pt-BR");
@@ -62,7 +83,15 @@
       credentials: "same-origin",
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "Não foi possível concluir a autenticação.");
+    if (!response.ok) {
+      if (mode === "verify" && Array.isArray(result.challenge)) {
+        challenge = result.challenge;
+        livenessFrames.length = 0;
+        angleIndex = 0;
+        updateProgress();
+      }
+      throw new Error(result.error || "Não foi possível concluir a autenticação.");
+    }
     window.location.assign(result.redirect);
   }
 
@@ -75,7 +104,17 @@
     try {
       const image = captureFrame();
       if (mode === "verify") {
-        await sendCapture(workspace.dataset.verifyUrl, { image });
+        if (angleIndex < challenge.length) {
+          livenessFrames.push(image);
+          angleIndex += 1;
+          updateProgress();
+          feedback.textContent = "Movimento registrado. Continue seguindo o desafio.";
+          return;
+        }
+        await sendCapture(workspace.dataset.verifyUrl, {
+          image,
+          liveness_images: livenessFrames,
+        });
         return;
       }
       frames[angles[angleIndex].key] = image;
@@ -95,7 +134,11 @@
     } finally {
       busy = false;
       button.disabled = !stream || workspace.dataset.ready !== "true";
-      if (mode !== "verify" && angleIndex < angles.length && !button.disabled) {
+      if (
+        ((mode === "verify" && angleIndex <= challenge.length)
+          || (mode !== "verify" && angleIndex < angles.length))
+        && !button.disabled
+      ) {
         updateProgress();
       }
     }
@@ -139,7 +182,7 @@
       button.disabled = false;
       statusText.textContent = "Câmera ativa";
       statusHint.textContent = "Mantenha o rosto centralizado e siga as instruções.";
-      if (mode !== "verify") updateProgress();
+      updateProgress();
     } catch (error) {
       showCameraError(error);
     }

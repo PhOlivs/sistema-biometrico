@@ -3,21 +3,32 @@
 {% block content %}
 <section class="auth-shell section-shell">
   <div class="auth-intro">
-    <p class="eyebrow">ÁREA RESTRITA</p>
+    <p class="eyebrow">PROTOCOLO ÉGIDE / ÁREA RESTRITA</p>
     <h1>Acesso institucional</h1>
     <p>Use sua matrícula e senha. A autenticação facial será solicitada após a validação das credenciais.</p>
+    <div class="auth-sequence" aria-label="Etapas da autenticação">
+      <span class="auth-sequence-step is-current"><b>01</b> Credencial</span>
+      <span class="auth-sequence-rule" aria-hidden="true"></span>
+      <span class="auth-sequence-step"><b>02</b> Biometria</span>
+    </div>
     <div class="notice notice-neutral"><strong>Privacidade</strong><span>As senhas são armazenadas por hash. Nunca informe sua senha a terceiros.</span></div>
   </div>
-  <form class="form-card" method="post" action="{{ url_for('auth.login') }}">
+  <form class="form-card auth-form" method="post" action="{{ url_for('auth.login') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <h2>Identificação</h2>
     {% if error %}<p class="alert alert--error" role="alert">{{ error }}</p>{% endif %}
     <label for="matricula">Matrícula</label>
     <input id="matricula" name="matricula" value="{{ matricula }}" autocomplete="username" required maxlength="20" placeholder="X001">
     <label for="password">Senha</label>
-    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <div class="password-input-wrap">
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <button class="password-visibility-toggle" type="button" data-password-toggle aria-label="Mostrar senha" title="Mostrar senha">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle><path class="eye-slash" d="m4 4 16 16"></path></svg>
+      </button>
+    </div>
     <button class="button button-primary button-full" type="submit">Continuar para biometria</button>
     <p class="form-footnote">Ainda não possui credencial? <a href="{{ url_for('auth.register') }}">Solicite um cadastro</a>.</p>
   </form>
 </section>
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/forms.js') }}" defer></script>{% endblock %}

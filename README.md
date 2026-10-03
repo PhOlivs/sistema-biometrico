@@ -333,7 +333,7 @@ Sem ativar o ambiente:
 .venv/bin/flask --app app provision-admin
 ```
 
-O comando solicita interativamente os dados necessários e cria uma única conta administrativa aprovada.
+O comando solicita interativamente os dados necessários (use um e-mail `@egíde.com.br`) e cria uma única conta administrativa aprovada.
 
 A conta possui:
 
@@ -406,13 +406,33 @@ O limiar padrão é `0.363`.
 
 Esse valor deve ser validado em dados de avaliação apropriados ao contexto acadêmico. Ele não representa uma taxa de erro nem uma garantia de desempenho biométrico.
 
+### Avaliação experimental do threshold
+
+Os eventos de autenticação facial guardam os scores de similaridade dos modelos frontal, direita e esquerda, o máximo usado na decisão e o threshold aplicado. Consulte esses campos em **Administração → Auditoria → Detalhes**. São scores biométricos sensíveis; mantenha a auditoria protegida e não a use para inferir uma probabilidade de identidade.
+
+Para estimar FAR (taxa de falsa aceitação), FRR (taxa de falsa rejeição) e EER em um conjunto de avaliação com rótulos conhecidos, crie um CSV local com uma linha por comparação e as colunas `pair_type,score`. Use `genuine` para duas amostras da mesma pessoa e `impostor` para pessoas diferentes. Colete os exemplos com consentimento, separe pessoas/sessões de calibração e avaliação e não inclua imagens ou dados identificáveis no CSV:
+
+```csv
+pair_type,score
+genuine,0.421
+genuine,0.387
+impostor,0.291
+```
+
+Execute pela `.venv`:
+
+```bash
+.venv/bin/python -m scripts.evaluate_face_threshold dados_scores.csv --threshold 0.363
+```
+
+O relatório calcula FAR como a proporção de impostores com score acima ou igual ao threshold e FRR como a proporção de pares genuínos abaixo dele. Também mostra uma estimativa discreta de EER; ela não é uma certificação e o EER não é necessariamente o threshold adequado para o sistema. A escolha operacional deve considerar o custo relativo de falsos aceites e rejeições e ser avaliada em dados separados dos usados para calibrar.
+
 ---
 
 # 9. Fluxos implementados
 
 ### Cadastro público
-
-Validação de nome, data, CPF, e-mail, senha e nível; hash de senha; criptografia de CPF/RG; geração transacional de matrícula (`Xnnn`, `Ynnn`, `Znnn`) e criação da conta em estado `PENDING`.
+Validação de nome, data, CPF de 11 dígitos (com ou sem máscara, sem validar dígitos verificadores), RG opcional, e-mail institucional `@egíde.com.br` e senha de pelo menos 12 caracteres com letras, números, maiúscula e símbolo; hash de senha; criptografia de CPF/RG; consentimento biométrico registrado com data e criação da conta em estado `PENDING`. Cargo, nível, área, equipe e superior não são solicitados nem aceitos do usuário; a posição fica pendente até a delegação administrativa.
 
 ### Biometria de cadastro
 
@@ -425,13 +445,19 @@ O processo inclui:
 - alinhamento;
 - extração de embeddings com YuNet/SFace.
 
-As imagens capturadas são processadas em memória e descartadas. Os templates biométricos são criptografados antes de serem persistidos.
+As imagens das etapas lateral direita e esquerda são processadas em memória e descartadas. A imagem frontal é recortada em miniatura, criptografada e guardada separadamente para análise do administrador; o acesso à foto é protegido pela sessão administrativa. Os templates biométricos também são criptografados antes de persistidos.
 
 ### Aprovação
 
 A área administrativa exige uma sessão aprovada e o papel `ADMIN`.
 
-Uma solicitação só pode ser aprovada após a existência dos três templates faciais.
+Uma solicitação só pode ser aprovada após a existência dos três templates faciais e da foto frontal. Na aprovação ou edição, a seção **Delegação Institucional** permite escolher cargos em modal agrupado por nível, selecionar área/equipe controladas e escolher um superior elegível. O nível é derivado do cargo no backend; não existe campo manual para defini-lo. Equipes são filtradas pela área, e superiores operacionais devem pertencer à mesma área e equipe. O serviço repete as validações no backend, verifica os subordinados atuais e rejeita ciclos antes de gravar. A matrícula correspondente (`Xnnn`, `Ynnn` ou `Znnn`) é gerada na mesma transação e apresentada ao administrador para que ele a forneça ao usuário pelo canal institucional.
+
+### Estrutura organizacional
+
+As tabelas `organization_positions`, `organization_position_reports`, `organization_areas` e `organization_teams` guardam os cargos, relações permitidas, áreas e equipes. Cada usuário possui no máximo uma área, uma equipe e uma referência `manager_user_id` ao superior. A hierarquia e os níveis iniciais são semeados no banco; equipes futuras podem ser adicionadas como registros de `organization_teams` vinculados à respectiva área.
+
+Em **Administração → Usuários → Organograma Institucional**, a árvore é carregada dos relacionamentos persistidos e pode ser expandida ou recolhida por pessoa. Todo usuário aprovado recebe uma área e uma equipe de lotação, inclusive os cargos institucionais de direção. O escopo global desses cargos descreve sua abrangência hierárquica e permite subordinados de áreas diferentes; as relações entre cargos operacionais são validadas para impedir cruzamentos entre áreas.
 
 Rejeições exigem justificativa e as ações administrativas são auditadas.
 
@@ -439,7 +465,9 @@ Rejeições exigem justificativa e as ações administrativas são auditadas.
 
 O usuário informa matrícula e senha.
 
-A conta precisa estar no estado `APPROVED`. Em seguida, ocorre a comparação facial.
+A conta precisa estar no estado `APPROVED`. Antes do SFace, o servidor emite uma sequência aleatória de três movimentos direita/esquerda. YuNet verifica, em cada captura, um único rosto, a qualidade básica e a orientação pedida; só então a captura frontal é comparada com os três templates pelo cosseno. O resultado, os três scores, o máximo e o threshold são registrados na auditoria.
+
+Esse desafio é uma **prova de presença experimental**, não um mecanismo anti-spoofing certificado: capturas independentes não demonstram resistência a vídeos/manipulações sofisticados e não equivalem a uma solução biométrica de vivacidade.
 
 A sessão autenticada somente é criada após a confirmação necessária.
 

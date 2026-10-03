@@ -3,18 +3,21 @@
 {% block content %}
 <section class="section-shell dashboard-page">
   <a class="back-link" href="{{ url_for('admin.requests_list') }}">← Voltar às solicitações</a>
-  <div class="page-heading"><p class="eyebrow">ANÁLISE ADMINISTRATIVA</p><h1>{{ user.name }}</h1><p>Matrícula {{ user.matricula }} · Solicitado em {{ user.created_at[:10] }}</p></div>
+  <div class="page-heading"><p class="eyebrow">ANÁLISE ADMINISTRATIVA</p><h1>{{ user.name }}</h1><p>Solicitado em {{ user.created_at[:10] }} · Matrícula, nível, cargo, área, equipe e superior serão atribuídos na aprovação.</p></div>
   <div class="admin-overview">
-    <article class="panel-card"><p class="eyebrow">DADOS DO CADASTRO</p><dl class="detail-grid">
-      <div><dt>Nome completo</dt><dd>{{ user.name }}</dd></div><div><dt>Matrícula</dt><dd>{{ user.matricula }}</dd></div>
-      <div><dt>Nível solicitado</dt><dd>Nível {{ user.access_level }}</dd></div><div><dt>Cargo</dt><dd>{{ user.job_title }}</dd></div>
-      <div><dt>Divisão</dt><dd>{{ user.division }}</dd></div><div><dt>E-mail</dt><dd>{{ user.email }}</dd></div>
+    <article class="panel-card"><p class="eyebrow">DADOS DO CADASTRO</p><img class="profile-photo" src="{{ url_for('admin.user_photo', user_id=user.id) }}" alt="Foto de {{ user.name }}" onerror="this.hidden=true"><dl class="detail-grid">
+      <div><dt>Nome completo</dt><dd>{{ user.name }}</dd></div><div><dt>Matrícula</dt><dd>A definir</dd></div>
+      <div><dt>Nível de acesso</dt><dd>Atribuído pelo cargo selecionado</dd></div><div><dt>Posição institucional</dt><dd>Definida na delegação</dd></div>
+      <div><dt>E-mail</dt><dd>{{ user.email }}</dd></div>
       <div><dt>Data de nascimento</dt><dd>{{ user.birth_date or 'Não informado' }}</dd></div>
       <div><dt>CPF</dt><dd>{{ cpf_masked }}</dd></div><div><dt>Biometria</dt><dd>{{ biometric_status }}</dd></div>
+      <div><dt>Consentimento registrado</dt><dd>{{ user.biometric_photo_consent_at or 'Não registrado' }}</dd></div>
     </dl></article>
     <article class="panel-card decision-card"><p class="eyebrow">DECISÃO</p><h2>Status: {{ user.status_label }}</h2>
       <p>A aprovação habilita login após a validação de senha e biometria. Rejeições exigem justificativa e são auditadas.</p>
-      <form method="post" action="{{ url_for('admin.approve', user_id=user.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="button button-primary button-full" type="submit" {% if biometric_status != 'CADASTRADA' %}disabled{% endif %}>Aprovar cadastro</button></form>
+      <form method="post" action="{{ url_for('admin.approve', user_id=user.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% include "admin/_delegation_fields.html" %}
+        <button class="button button-primary button-full" type="submit" {% if biometric_status != 'CADASTRADA' %}disabled{% endif %}>Aprovar e gerar matrícula</button></form>
       {% if biometric_status != 'CADASTRADA' %}<small class="field-error">As três capturas faciais são necessárias antes da aprovação.</small>{% endif %}
       <form method="post" action="{{ url_for('admin.reject', user_id=user.id) }}" class="stacked-form" data-confirm="Rejeitar esta solicitação?">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -25,4 +28,4 @@
   </div>
 </section>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/forms.js') }}" defer></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/forms.js') }}" defer></script><script src="{{ url_for('static', filename='js/organization.js') }}" defer></script>{% endblock %}

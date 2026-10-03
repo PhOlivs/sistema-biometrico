@@ -29,13 +29,7 @@ def extract_embedding(image, *, detector_path: str, recognizer_path: str, expect
     face = faces[0]
     if face.confidence < 0.85:
         raise ValueError("A imagem do rosto não ficou nítida o suficiente.")
-    yaw = _estimate_yaw(face.landmarks)
-    if expected_angle == "FRONT" and abs(yaw) > 0.18:
-        raise ValueError("Olhe diretamente para a câmera.")
-    if expected_angle == "RIGHT" and yaw > -0.08:
-        raise ValueError("Vire o rosto para a direita, conforme a indicação da tela.")
-    if expected_angle == "LEFT" and yaw < 0.08:
-        raise ValueError("Vire o rosto para a esquerda, conforme a indicação da tela.")
+    validate_face_orientation(estimate_yaw(face.landmarks), expected_angle)
 
     aligned = _recognizer(recognizer_path).alignCrop(image, face.raw.reshape(1, -1))
     feature = _recognizer(recognizer_path).feature(aligned).reshape(-1).astype(np.float32)
@@ -45,13 +39,24 @@ def extract_embedding(image, *, detector_path: str, recognizer_path: str, expect
     return feature / norm
 
 
-def _estimate_yaw(landmarks: tuple[float, ...]) -> float:
+def estimate_yaw(landmarks: tuple[float, ...]) -> float:
     right_eye_x, left_eye_x, nose_x = landmarks[0], landmarks[2], landmarks[4]
     eye_distance = abs(left_eye_x - right_eye_x)
     if eye_distance < 1:
         raise ValueError("Não foi possível validar a posição do rosto.")
     eye_midpoint = (right_eye_x + left_eye_x) / 2
     return (nose_x - eye_midpoint) / eye_distance
+
+
+def validate_face_orientation(yaw: float, expected_angle: str) -> None:
+    if expected_angle == "FRONT" and abs(yaw) > 0.18:
+        raise ValueError("Olhe diretamente para a câmera.")
+    if expected_angle == "RIGHT" and yaw > -0.08:
+        raise ValueError("Vire o rosto para a direita, conforme a indicação da tela.")
+    if expected_angle == "LEFT" and yaw < 0.08:
+        raise ValueError("Vire o rosto para a esquerda, conforme a indicação da tela.")
+    if expected_angle not in ("FRONT", "RIGHT", "LEFT"):
+        raise ValueError("A posição facial solicitada não é válida.")
 
 
 def cosine_similarity(first: np.ndarray, second: np.ndarray) -> float:

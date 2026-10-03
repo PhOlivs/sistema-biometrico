@@ -1,16 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Usuário {{ user.matricula }} · {{ system_name }}{% endblock %}
+{% block title %}Usuário {{ user.matricula or 'pendente' }} · {{ system_name }}{% endblock %}
 {% block content %}
 <section class="section-shell dashboard-page">
   <a class="back-link" href="{{ url_for('admin.users') }}">← Voltar aos usuários</a>
-  <div class="welcome-row"><div><p class="eyebrow">PERFIL INSTITUCIONAL</p><h1>{{ user.name }}</h1><p>{{ user.matricula }} · {{ user.job_title }}</p></div><span class="status-badge status-{{ user.status|lower }}">{{ user.status_label }}</span></div>
+  <div class="welcome-row"><div><p class="eyebrow">PERFIL INSTITUCIONAL</p><h1>{{ user.name }}</h1><p>{{ user.matricula or 'Matrícula pendente' }} · {{ user.job_title }}</p></div><span class="status-badge status-{{ user.status|lower }}">{{ user.status_label }}</span></div>
   <div class="admin-overview">
-    <article class="panel-card"><p class="eyebrow">IDENTIDADE E CREDENCIAL</p><dl class="detail-grid">
-      <div><dt>Matrícula</dt><dd>{{ user.matricula }}</dd></div><div><dt>Nível de acesso</dt><dd>Nível {{ user.access_level }}</dd></div>
-      <div><dt>Cargo</dt><dd>{{ user.job_title }}</dd></div><div><dt>Divisão</dt><dd>{{ user.division }}</dd></div>
+    <article class="panel-card"><p class="eyebrow">IDENTIDADE E CREDENCIAL</p><img class="profile-photo" src="{{ url_for('admin.user_photo', user_id=user.id) }}" alt="Foto de {{ user.name }}" onerror="this.hidden=true"><dl class="detail-grid">
+      <div><dt>Matrícula</dt><dd>{{ user.matricula or 'A definir' }}</dd></div><div><dt>Nível de acesso</dt><dd>{{ user.access_level_label }}</dd></div>
+      <div><dt>Cargo hierárquico</dt><dd>{{ user.position_name or user.job_title }}</dd></div>
+      <div><dt>Área</dt><dd>{{ user.area_name or 'Atribuição pendente' }}</dd></div><div><dt>Equipe</dt><dd>{{ user.team_name or 'Atribuição pendente' }}</dd></div>
+      <div><dt>Superior imediato</dt><dd>{{ user.manager_name or 'Nenhum' }}</dd></div>
       <div><dt>E-mail</dt><dd>{{ user.email }}</dd></div><div><dt>Nascimento</dt><dd>{{ user.birth_date or 'Não informado' }}</dd></div>
       <div><dt>CPF</dt><dd>{{ cpf_masked }}</dd></div><div><dt>RG</dt><dd>{{ rg_masked }}</dd></div>
-      <div><dt>Biometria</dt><dd>{{ biometric_status }}</dd></div><div><dt>Última atividade</dt><dd>{{ user.last_activity_at or 'Sem atividade registrada' }}</dd></div>
+      <div><dt>Biometria</dt><dd>{{ biometric_status }}</dd></div><div><dt>Consentimento biométrico</dt><dd>{{ user.biometric_photo_consent_at or 'Não registrado' }}</dd></div><div><dt>Última atividade</dt><dd>{{ user.last_activity_at or 'Sem atividade registrada' }}</dd></div>
       <div><dt>Criado em</dt><dd>{{ user.created_at }}</dd></div><div><dt>Perfil</dt><dd>{{ user.role_label }}</dd></div>
     </dl><div class="form-actions"><a class="button button-primary" href="{{ url_for('admin.edit_user', user_id=user.id) }}">Editar perfil</a></div></article>
     <article class="panel-card"><p class="eyebrow">AÇÕES ADMINISTRATIVAS</p><p>Cada alteração é identificada com o administrador responsável e registrada para auditoria.</p>

@@ -18,7 +18,7 @@
     </div>
     <div class="field">
       <label for="cpf">CPF</label>
-      <input id="cpf" name="cpf" inputmode="numeric" autocomplete="off" required maxlength="14" placeholder="000.000.000-00">
+      <input id="cpf" name="cpf" inputmode="numeric" autocomplete="off" required placeholder="000.000.000-00">
       {% if errors.get('cpf') %}<small class="field-error">{{ errors.cpf }}</small>{% endif %}
       <small>Armazenado de forma protegida e não exibido na listagem.</small>
     </div>
@@ -28,41 +28,51 @@
       {% if errors.get('rg') %}<small class="field-error">{{ errors.rg }}</small>{% endif %}
     </div>
     <div class="field">
-      <label for="job_title">Cargo</label>
-      <input id="job_title" name="job_title" value="{{ form.get('job_title', '') }}" required maxlength="120">
-      {% if errors.get('job_title') %}<small class="field-error">{{ errors.job_title }}</small>{% endif %}
-    </div>
-    <div class="field">
-      <label for="division">Divisão / setor</label>
-      <input id="division" name="division" value="{{ form.get('division', '') }}" required maxlength="120">
-      {% if errors.get('division') %}<small class="field-error">{{ errors.division }}</small>{% endif %}
-    </div>
-    <div class="field">
       <label for="email">E-mail institucional</label>
-      <input id="email" name="email" type="email" value="{{ form.get('email', '') }}" autocomplete="email" required maxlength="254">
+      <input id="email" name="email" type="email" value="{{ form.get('email', '') }}" autocomplete="email" required maxlength="254" placeholder="nome@egíde.com.br">
       {% if errors.get('email') %}<small class="field-error">{{ errors.email }}</small>{% endif %}
+      <small>Use um endereço do domínio @egíde.com.br.</small>
     </div>
-    <div class="field">
-      <label for="access_level">Nível solicitado</label>
-      <select id="access_level" name="access_level" required>
-        {% for level, label in [(1, 'Nível 1 — Acesso geral'), (2, 'Nível 2 — Diretoria'), (3, 'Nível 3 — Ministério')] %}
-          <option value="{{ level }}" {% if form.get('access_level', '1')|string == level|string %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-      {% if errors.get('access_level') %}<small class="field-error">{{ errors.access_level }}</small>{% endif %}
-    </div>
+    <div class="credential-fields form-span">
     <div class="field">
       <label for="password">Senha</label>
-      <input id="password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
-      <small>Mínimo de 12 caracteres.</small>
+      <div class="password-input-wrap">
+        <input id="password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required aria-describedby="password-strength">
+        <button class="password-visibility-toggle" type="button" data-password-toggle aria-label="Mostrar senha" title="Mostrar senha">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle><path class="eye-slash" d="m4 4 16 16"></path></svg>
+        </button>
+      </div>
+      <div class="password-strength" id="password-strength" aria-live="polite">
+        <strong data-password-strength-status>Senha fraca</strong>
+        <ul>
+          <li data-password-rule="length">Mínimo de caracteres: 12</li>
+          <li data-password-rule="letters-numbers">Letras e números</li>
+          <li data-password-rule="uppercase">Uma letra maiúscula</li>
+          <li data-password-rule="symbol">Um símbolo</li>
+        </ul>
+      </div>
       {% if errors.get('password') %}<small class="field-error">{{ errors.password }}</small>{% endif %}
     </div>
     <div class="field">
       <label for="password_confirmation">Confirme a senha</label>
-      <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+      <div class="password-input-wrap">
+        <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+        <button class="password-visibility-toggle" type="button" data-password-toggle aria-label="Mostrar senha" title="Mostrar senha">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle><path class="eye-slash" d="m4 4 16 16"></path></svg>
+        </button>
+      </div>
       {% if errors.get('password_confirmation') %}<small class="field-error">{{ errors.password_confirmation }}</small>{% endif %}
     </div>
-    <div class="notice notice-warning form-span"><strong>Proteção de dados</strong><span>Este é um protótipo acadêmico. Não utilize dados pessoais reais em demonstrações públicas.</span></div>
+    </div>
+    <div class="notice notice-warning form-span"><strong>Proteção de dados biométricos</strong><span>Este protótipo guardará uma foto frontal criptografada, visível apenas à administração, e templates faciais criptografados para autenticação. As capturas laterais não são mantidas. Não utilize dados reais em demonstrações públicas.</span></div>
+    <div class="field form-span consent-field">
+      <label class="consent-label" for="biometric_consent">
+        <input class="consent-checkbox" id="biometric_consent" type="checkbox" name="biometric_consent" value="yes" required>
+        <span>Autorizo o registro biométrico e o armazenamento protegido descrito acima para esta demonstração acadêmica.</span>
+      </label>
+      {% if errors.get('biometric_consent') %}<small class="field-error">{{ errors.biometric_consent }}</small>{% endif %}
+    </div>
+    <p class="form-span fine-print">Cargo, nível, área, equipe, superior hierárquico e matrícula serão definidos pela administração após a análise.</p>
     <div class="form-actions form-span"><a class="button button-secondary" href="{{ url_for('auth.index') }}">Cancelar</a><button class="button button-primary" type="submit">Continuar para registro facial</button></div>
   </form>
 </section>

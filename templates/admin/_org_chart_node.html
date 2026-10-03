@@ -1,0 +1,45 @@
+{% macro render_org_node(node, expanded=false) %}
+  {% set person = node.user %}
+  <li class="org-chart-node">
+    {% if node.children %}
+    <details {% if expanded %}open{% endif %}>
+      <summary>
+        <article class="org-person-card">
+          <div class="org-person-heading">
+            <strong>{{ person.name }}</strong>
+            <span class="status-badge status-{{ person.status|lower }}">{{ person.status_label }}</span>
+          </div>
+          <span class="org-position">{{ person.position_name }}</span>
+          <div class="org-person-meta">
+            <span>Matrícula <b>{{ person.matricula or 'A definir' }}</b></span>
+            <span>Nível <b>{{ person.access_level or 'A definir' }}</b></span>
+            <span>Área <b>{{ person.area_name or 'Atribuição pendente' }}</b></span>
+            <span>Equipe <b>{{ person.team_name or 'Atribuição pendente' }}</b></span>
+            <span>Superior <b>{{ person.manager_name or 'Nenhum' }}</b></span>
+          </div>
+        </article>
+      </summary>
+      <ul class="org-chart-children">
+        {% for child in node.children %}{{ render_org_node(child) }}{% endfor %}
+      </ul>
+    </details>
+    <a class="org-profile-link" href="{{ url_for('admin.user_detail', user_id=person.id) }}">Ver perfil</a>
+    {% else %}
+    <article class="org-person-card org-person-leaf">
+      <div class="org-person-heading">
+        <strong>{{ person.name }}</strong>
+        <span class="status-badge status-{{ person.status|lower }}">{{ person.status_label }}</span>
+      </div>
+      <span class="org-position">{{ person.position_name }}</span>
+      <div class="org-person-meta">
+        <span>Matrícula <b>{{ person.matricula or 'A definir' }}</b></span>
+        <span>Nível <b>{{ person.access_level or 'A definir' }}</b></span>
+        <span>Área <b>{{ person.area_name or 'Atribuição pendente' }}</b></span>
+        <span>Equipe <b>{{ person.team_name or 'Atribuição pendente' }}</b></span>
+        <span>Superior <b>{{ person.manager_name or 'Nenhum' }}</b></span>
+      </div>
+      <a class="org-profile-link" href="{{ url_for('admin.user_detail', user_id=person.id) }}">Ver perfil</a>
+    </article>
+    {% endif %}
+  </li>
+{% endmacro %}

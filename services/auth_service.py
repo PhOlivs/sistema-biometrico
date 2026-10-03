@@ -50,19 +50,25 @@ def cpf_digest(cpf: str | None) -> str | None:
 
 
 def normalize_cpf(raw: str) -> str:
-    digits = _CPF_DIGITS.sub("", raw or "")
-    if len(digits) != 11 or digits == digits[0] * 11:
-        raise ValueError("Informe um CPF válido.")
-    for position in (9, 10):
-        total = sum(int(digit) * weight for digit, weight in zip(
-            digits[:position], range(position + 1, 1, -1)
-        ))
-        check = (total * 10) % 11
-        if check == 10:
-            check = 0
-        if check != int(digits[position]):
-            raise ValueError("Informe um CPF válido.")
+    if not re.fullmatch(r"[0-9.\-\s]*", raw or ""):
+        raise ValueError("Use apenas números, pontos ou hífen no CPF.")
+    digits = re.sub(r"[^0-9]", "", raw or "")
+    if len(digits) != 11:
+        raise ValueError("Informe os 11 dígitos do CPF.")
     return digits
+
+
+def _password_requirements(password: str) -> list[str]:
+    requirements = []
+    if len(password) < 12:
+        requirements.append("mínimo de 12 caracteres")
+    if not (any(char.isalpha() for char in password) and any(char.isdigit() for char in password)):
+        requirements.append("letras e números")
+    if not any(char.isupper() for char in password):
+        requirements.append("uma letra maiúscula")
+    if not any(not char.isalnum() and not char.isspace() for char in password):
+        requirements.append("um símbolo")
+    return requirements
 
 
 def encrypt_sensitive(value: str | None) -> str | None:
@@ -92,6 +98,8 @@ def validate_birth_date(value: str) -> str:
 
 def register_user(conn, data: dict):
     errors = {}
+    if data.get("biometric_consent") not in ("yes", "on", "true"):
+        errors["biometric_consent"] = "Confirme o consentimento para o registro e armazenamento da biometria."
     try:
         cpf = normalize_cpf(data.get("cpf", ""))
     except ValueError as exc:
@@ -112,10 +120,14 @@ def register_user(conn, data: dict):
     if not isinstance(rg, str):
         rg = ""
         errors["rg"] = "Informe um RG válido."
-    if len(password) < 12:
-        errors["password"] = "A senha deve ter pelo menos 12 caracteres."
-    elif len(password) > 128:
+    if len(password) > 128:
         errors["password"] = "A senha deve ter no máximo 128 caracteres."
+    else:
+        missing_requirements = _password_requirements(password)
+        if missing_requirements:
+            errors["password"] = (
+                "A senha não atende aos requisitos: " + ", ".join(missing_requirements) + "."
+            )
     if password != confirmation:
         errors["password_confirmation"] = "A confirmação de senha não confere."
     if len(rg) > 32:
@@ -134,7 +146,7 @@ def register_user(conn, data: dict):
         job_title=data.get("job_title"),
         division=data.get("division"),
         password_hash=generate_password_hash(password, method="scrypt"),
-        access_level=data.get("access_level"),
+        biometric_consent=True,
     )
 
 

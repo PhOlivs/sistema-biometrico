@@ -40,7 +40,10 @@ class User:
     job_title: str
     division: str
     role: str
-    access_level: int
+    access_level: int | None
+    access_level_assigned: bool
+    profile_photo_encrypted: bytes | None
+    biometric_photo_consent_at: str | None
     status: str
     created_at: str
     updated_at: str
@@ -48,9 +51,19 @@ class User:
     cpf_encrypted: str | None = None
     rg_encrypted: str | None = None
     rejection_reason: str | None = None
+    position_id: int | None = None
+    position_code: str | None = None
+    position_name: str | None = None
+    area_id: int | None = None
+    area_name: str | None = None
+    team_id: int | None = None
+    team_name: str | None = None
+    manager_user_id: int | None = None
+    manager_name: str | None = None
 
     @classmethod
     def from_row(cls, row) -> "User":
+        columns = set(row.keys())
         return cls(
             id=row["id"],
             matricula=row["matricula"],
@@ -60,7 +73,10 @@ class User:
             job_title=row["job_title"],
             division=row["division"],
             role=row["role"],
-            access_level=row["access_level"],
+            access_level=row["access_level"] if bool(row["access_level_assigned"]) else None,
+            access_level_assigned=bool(row["access_level_assigned"]),
+            profile_photo_encrypted=row["profile_photo_encrypted"],
+            biometric_photo_consent_at=row["biometric_photo_consent_at"],
             status=row["status"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
@@ -68,6 +84,15 @@ class User:
             cpf_encrypted=row["cpf_encrypted"],
             rg_encrypted=row["rg_encrypted"],
             rejection_reason=row["rejection_reason"],
+            position_id=row["position_id"],
+            position_code=row["position_code"] if "position_code" in columns else None,
+            position_name=row["position_name"] if "position_name" in columns else None,
+            area_id=row["area_id"],
+            area_name=row["area_name"] if "area_name" in columns else None,
+            team_id=row["team_id"],
+            team_name=row["team_name"] if "team_name" in columns else None,
+            manager_user_id=row["manager_user_id"],
+            manager_name=row["manager_name"] if "manager_name" in columns else None,
         )
 
     @property
@@ -88,4 +113,4 @@ class User:
 
     @property
     def access_level_label(self) -> str:
-        return level_label(self.access_level)
+        return level_label(self.access_level) if self.access_level_assigned else "A definir"

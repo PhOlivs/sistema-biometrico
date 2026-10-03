@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Painel administrativo · {{ system_name }}{% endblock %}
 {% block content %}
-<section class="section-shell dashboard-page">
-  <div class="welcome-row"><div><p class="eyebrow">GESTÃO INSTITUCIONAL</p><h1>Painel administrativo</h1><p>Visão geral de cadastros e eventos de segurança.</p></div><a class="button button-primary" href="{{ url_for('admin.requests_list') }}">Analisar pendências{% if pending_count %} <span class="button-count">{{ pending_count }}</span>{% endif %}</a></div>
-  <div class="summary-grid summary-grid-5">
+<section class="section-shell dashboard-page admin-dashboard">
+  <div class="welcome-row"><div><p class="eyebrow">CENTRO DE CONTROLE / GESTÃO INSTITUCIONAL</p><h1>Painel administrativo</h1><p>Estado dos cadastros e atividade recente do sistema.</p></div><a class="button button-primary" href="{{ url_for('admin.requests_list') }}">Analisar pendências{% if pending_count %} <span class="button-count">{{ pending_count }}</span>{% endif %}</a></div>
+  <div class="summary-grid summary-grid-5 dashboard-ledger">
     <article class="summary-card"><span class="eyebrow">USUÁRIOS</span><strong class="summary-value">{{ stats.total }}</strong><small>Contas registradas</small></article>
     <article class="summary-card"><span class="eyebrow">PENDENTES</span><strong class="summary-value text-warning">{{ stats.pending }}</strong><small>Aguardam análise</small></article>
     <article class="summary-card"><span class="eyebrow">APROVADOS</span><strong class="summary-value text-success">{{ stats.approved }}</strong><small>Com acesso habilitado</small></article>
     <article class="summary-card"><span class="eyebrow">REJEITADOS</span><strong class="summary-value">{{ stats.rejected }}</strong><small>Solicitações recusadas</small></article>
     <article class="summary-card"><span class="eyebrow">SUSPENSOS</span><strong class="summary-value text-danger">{{ stats.suspended }}</strong><small>Contas sem acesso</small></article>
   </div>
-  <div class="admin-overview">
+  <div class="admin-overview dashboard-overview">
     <article class="panel-card">
       <div class="panel-title-row"><div><p class="eyebrow">DISTRIBUIÇÃO</p><h2>Usuários por nível</h2></div><a class="text-link" href="{{ url_for('admin.users') }}">Ver usuários</a></div>
       {% set max_users = [stats.by_level.get(1, 0), stats.by_level.get(2, 0), stats.by_level.get(3, 0), 1]|max %}
@@ -30,15 +30,15 @@
       <p class="fine-print">Contagens calculadas a partir dos eventos persistidos no banco.</p>
     </article>
   </div>
-  <article class="panel-card table-panel">
-    <div class="panel-title-row"><div><p class="eyebrow">ATIVIDADE</p><h2>Cadastros recentes</h2></div><a class="text-link" href="{{ url_for('admin.users') }}">Gerenciar usuários</a></div>
+  <article class="panel-card table-panel dashboard-table">
+    <div class="panel-title-row"><div><p class="eyebrow">CADASTROS</p><h2>Atividade recente de usuários</h2></div><a class="text-link" href="{{ url_for('admin.users') }}">Gerenciar usuários</a></div>
     <div class="table-wrap"><table><thead><tr><th>Matrícula</th><th>Nome</th><th>Nível</th><th>Status</th><th>Cadastro</th><th></th></tr></thead><tbody>
-      {% for user in users %}<tr><td class="monospace">{{ user.matricula }}</td><td>{{ user.name }}</td><td>Nível {{ user.access_level }}</td><td><span class="status-badge status-{{ user.status|lower }}">{{ user.status_label }}</span></td><td>{{ user.created_at[:10] }}</td><td><a class="table-link" href="{{ url_for('admin.user_detail', user_id=user.id) }}">Abrir</a></td></tr>
+      {% for user in users %}<tr><td class="monospace">{{ user.matricula or 'A definir' }}</td><td>{{ user.name }}</td><td>{{ user.access_level_label }}</td><td><span class="status-badge status-{{ user.status|lower }}">{{ user.status_label }}</span></td><td>{{ user.created_at[:10] }}</td><td><a class="table-link" href="{{ url_for('admin.user_detail', user_id=user.id) }}">Abrir</a></td></tr>
       {% else %}<tr><td colspan="6" class="empty-cell">Nenhum cadastro.</td></tr>{% endfor %}
     </tbody></table></div>
   </article>
-  <article class="panel-card table-panel">
-    <div class="panel-title-row"><div><p class="eyebrow">SEGURANÇA</p><h2>Atividade recente</h2></div><a class="text-link" href="{{ url_for('admin.access_logs') }}">Ver todos os eventos</a></div>
+  <article class="panel-card table-panel dashboard-table">
+    <div class="panel-title-row"><div><p class="eyebrow">TRILHA DE SEGURANÇA</p><h2>Eventos recentes</h2></div><a class="text-link" href="{{ url_for('admin.access_logs') }}">Ver todos os eventos</a></div>
     <div class="table-wrap"><table><thead><tr><th>Data e hora</th><th>Evento</th><th>Resultado</th></tr></thead><tbody>
       {% for event in audit.recent %}
       <tr><td class="monospace">{{ event.created_at.replace('T',' ') }}</td><td>{{ event.event }}</td><td><span class="status-badge status-{{ event.result|lower }}">{{ {'SUCCESS':'Permitido','DENIED':'Negado','FAILURE':'Falha','INFO':'Informativo'}.get(event.result, event.result) }}</span></td></tr>

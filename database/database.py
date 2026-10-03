@@ -7,10 +7,47 @@ from datetime import datetime, timezone
 
 from flask import current_app, g
 
+from models.organization import seed_organization
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS security_levels (
     level INTEGER PRIMARY KEY CHECK (level BETWEEN 1 AND 3),
     name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS organization_areas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL UNIQUE,
+    active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1))
+);
+
+CREATE TABLE IF NOT EXISTS organization_teams (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    area_id INTEGER NOT NULL REFERENCES organization_areas(id),
+    code TEXT NOT NULL,
+    name TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+    UNIQUE (area_id, code),
+    UNIQUE (area_id, name),
+    UNIQUE (area_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS organization_positions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL UNIQUE,
+    access_level INTEGER NOT NULL REFERENCES security_levels(level),
+    scope TEXT NOT NULL CHECK (scope IN ('GLOBAL', 'AREA')),
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1))
+);
+
+CREATE TABLE IF NOT EXISTS organization_position_reports (
+    supervisor_position_id INTEGER NOT NULL REFERENCES organization_positions(id),
+    subordinate_position_id INTEGER NOT NULL REFERENCES organization_positions(id),
+    PRIMARY KEY (supervisor_position_id, subordinate_position_id),
+    CHECK (supervisor_position_id != subordinate_position_id)
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -24,9 +61,16 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT NOT NULL UNIQUE COLLATE NOCASE,
     job_title TEXT NOT NULL DEFAULT '',
     division TEXT NOT NULL DEFAULT '',
+    position_id INTEGER REFERENCES organization_positions(id),
+    area_id INTEGER REFERENCES organization_areas(id),
+    team_id INTEGER REFERENCES organization_teams(id),
+    manager_user_id INTEGER REFERENCES users(id),
+    profile_photo_encrypted BLOB,
+    biometric_photo_consent_at TEXT,
     password_hash TEXT,
     role TEXT NOT NULL DEFAULT 'USER' CHECK (role IN ('ADMIN', 'USER')),
     access_level INTEGER NOT NULL CHECK (access_level IN (1, 2, 3)),
+    access_level_assigned INTEGER NOT NULL DEFAULT 0 CHECK (access_level_assigned IN (0, 1)),
     status TEXT NOT NULL DEFAULT 'PENDING'
         CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED', 'INACTIVE')),
     rejection_reason TEXT,
@@ -37,7 +81,8 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TEXT NOT NULL,
     last_activity_at TEXT,
     deleted_at TEXT,
-    FOREIGN KEY (access_level) REFERENCES security_levels(level)
+    FOREIGN KEY (access_level) REFERENCES security_levels(level),
+    FOREIGN KEY (area_id, team_id) REFERENCES organization_teams(area_id, id)
 );
 
 CREATE TABLE IF NOT EXISTS matricula_counters (
@@ -104,6 +149,13 @@ _LEGACY_COLUMNS = {
     "approved_at": "TEXT",
     "last_activity_at": "TEXT",
     "deleted_at": "TEXT",
+    "access_level_assigned": "INTEGER NOT NULL DEFAULT 1 CHECK (access_level_assigned IN (0, 1))",
+    "profile_photo_encrypted": "BLOB",
+    "biometric_photo_consent_at": "TEXT",
+    "position_id": "INTEGER REFERENCES organization_positions(id)",
+    "area_id": "INTEGER REFERENCES organization_areas(id)",
+    "team_id": "INTEGER REFERENCES organization_teams(id)",
+    "manager_user_id": "INTEGER REFERENCES users(id)",
 }
 _PREFIXES = {1: "X", 2: "Y", 3: "Z"}
 _MATRICULA_PATTERN = re.compile(r"^[XYZ](\d{3,})$")
@@ -137,16 +189,19 @@ def connect(path: str) -> sqlite3.Connection:
     return conn
 
 
-def _add_legacy_columns(conn: sqlite3.Connection) -> None:
+def _add_legacy_columns(conn: sqlite3.Connection) -> tuple[bool, bool]:
     existing = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
     had_status_column = "status" in existing
+    had_level_assignment_column = "access_level_assigned" in existing
     for column, definition in _LEGACY_COLUMNS.items():
         if column not in existing:
             conn.execute(f"ALTER TABLE users ADD COLUMN {column} {definition}")
-    return not had_status_column
+    return not had_status_column, not had_level_assignment_column
 
 
-def _migrate_legacy_users(conn: sqlite3.Connection, migrate_status: bool) -> None:
+def _migrate_legacy_users(
+    conn: sqlite3.Connection, migrate_status: bool, migrate_level_assignment: bool
+) -> None:
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     rows = conn.execute(
         "SELECT id, access_level, role, active, matricula, status FROM users ORDER BY id"
@@ -159,7 +214,7 @@ def _migrate_legacy_users(conn: sqlite3.Connection, migrate_status: bool) -> Non
             counters[level] = max(counters[level], int(existing[1:]))
         elif existing:
             existing = None
-        if not existing:
+        if not existing and migrate_level_assignment:
             counters[level] += 1
             existing = f"{_PREFIXES[level]}{counters[level]:03d}"
 
@@ -170,10 +225,12 @@ def _migrate_legacy_users(conn: sqlite3.Connection, migrate_status: bool) -> Non
             else:
                 status = "APPROVED" if row["active"] else "SUSPENDED"
         conn.execute(
-            "UPDATE users SET matricula = ?, status = ?, active = ?, updated_at = COALESCE(updated_at, ?) "
+            "UPDATE users SET matricula = ?, status = ?, active = ?, "
+            "access_level_assigned = CASE WHEN ? THEN 1 ELSE access_level_assigned END, "
+            "updated_at = COALESCE(updated_at, ?) "
             "WHERE id = ?",
             (existing, status, int(status in ("APPROVED", "PENDING")) if migrate_status
-             else row["active"], now, row["id"]),
+             else row["active"], int(migrate_level_assignment), now, row["id"]),
         )
     for level, value in counters.items():
         conn.execute(
@@ -187,17 +244,20 @@ def init_db(conn: sqlite3.Connection) -> None:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA)
-    migrate_status = _add_legacy_columns(conn)
+    migrate_status, migrate_level_assignment = _add_legacy_columns(conn)
     conn.executemany(
         "INSERT OR IGNORE INTO security_levels(level, name) VALUES (?, ?)",
         ((1, "Acesso geral"), (2, "Acesso de diretoria"), (3, "Acesso ministerial")),
     )
+    seed_organization(conn)
     conn.executescript(
         """
         CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
         CREATE INDEX IF NOT EXISTS idx_users_level ON users(access_level);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_users_matricula ON users(matricula);
         CREATE UNIQUE INDEX IF NOT EXISTS idx_users_cpf_digest ON users(cpf_digest);
+        CREATE INDEX IF NOT EXISTS idx_users_org_position ON users(position_id, area_id, team_id);
+        CREATE INDEX IF NOT EXISTS idx_users_org_manager ON users(manager_user_id);
         CREATE INDEX IF NOT EXISTS idx_access_logs_created ON access_logs(created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_access_logs_event_result ON access_logs(event, result);
         CREATE INDEX IF NOT EXISTS idx_admin_actions_created ON admin_actions(created_at DESC);
@@ -207,7 +267,7 @@ def init_db(conn: sqlite3.Connection) -> None:
         "INSERT OR IGNORE INTO matricula_counters(access_level, last_value) VALUES (?, 0)",
         ((1,), (2,), (3,)),
     )
-    _migrate_legacy_users(conn, migrate_status)
+    _migrate_legacy_users(conn, migrate_status, migrate_level_assignment)
     conn.executemany(
         "INSERT OR IGNORE INTO toxins(code, name, access_level, description) VALUES (?, ?, ?, ?)",
         ((f"{name.upper().replace('-', '')}", name, level, description)

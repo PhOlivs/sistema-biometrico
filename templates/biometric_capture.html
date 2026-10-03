@@ -10,7 +10,7 @@
       {% else %}Registre sua biometria facial{% endif %}
     </h1>
     <p>
-      {% if mode == "verify" %}Enquadre o rosto de frente para concluir o login.
+      {% if mode == "verify" %}Siga a sequência aleatória de movimentos e confirme o rosto de frente para concluir o login.
       {% else %}Serão feitas três capturas guiadas: frontal, lateral direita e lateral esquerda.{% endif %}
     </p>
   </div>
@@ -22,7 +22,8 @@
        data-enroll-url="{{ url_for('auth.enroll_biometric') }}"
        data-verify-url="{{ url_for('auth.verify_login_face') }}"
        data-setup-url="{{ url_for('auth.setup_admin_biometric') }}"
-       data-ready="{{ 'true' if biometric_ready else 'false' }}">
+       data-ready="{{ 'true' if biometric_ready else 'false' }}"
+       data-challenge='{{ liveness_challenge|default([])|tojson }}'>
     <div class="camera-frame">
       <video id="camera-feed" autoplay playsinline muted></video>
       <div class="camera-guide" aria-hidden="true"></div>
@@ -36,13 +37,13 @@
     <aside class="camera-side">
       <span class="eyebrow">IDENTIDADE</span>
       <h2>{{ user.name }}</h2>
-      <dl class="identity-summary"><div><dt>Matrícula</dt><dd>{{ user.matricula }}</dd></div><div><dt>Nível</dt><dd>{{ user.access_level_label }}</dd></div></dl>
-      <div class="capture-progress" id="capture-progress" {% if mode == 'verify' %}hidden{% endif %}>
+      <dl class="identity-summary"><div><dt>Matrícula</dt><dd>{{ user.matricula or 'A definir' }}</dd></div><div><dt>Nível</dt><dd>{{ user.access_level_label }}</dd></div></dl>
+      <div class="capture-progress" id="capture-progress">
         <div class="capture-progress-heading"><span id="capture-step">ETAPA 1 DE 3</span><span id="capture-angle">FRONTAL</span></div>
         <div class="progress-track"><span id="progress-fill"></span></div>
       </div>
       <p class="camera-instruction" id="camera-instruction">
-        {% if mode == "verify" %}Olhe diretamente para a câmera, com boa iluminação.
+        {% if mode == "verify" %}Siga a sequência aleatória de movimentos e, ao final, olhe para a câmera.
         {% else %}Olhe diretamente para a câmera e mantenha o rosto dentro da moldura.{% endif %}
       </p>
       <p id="camera-feedback" class="camera-feedback" role="status" aria-live="polite"></p>
@@ -50,7 +51,7 @@
         {% if mode == "verify" %}Verificar identidade{% else %}Capturar rosto frontal{% endif %}
       </button>
       <a class="button button-secondary button-full" href="{{ url_for('auth.login') if mode == 'verify' else url_for('auth.index') }}">Cancelar</a>
-      <p class="fine-print">A imagem é processada para gerar uma representação matemática protegida. O protótipo não implementa prova de vida.</p>
+      <p class="fine-print">O desafio de movimentos é uma verificação experimental de presença, não um sistema anti-spoofing certificado. As imagens são processadas no servidor para a verificação facial.</p>
     </aside>
   </div>
 </section>

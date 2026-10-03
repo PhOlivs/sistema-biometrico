@@ -1,0 +1,72 @@
+<section class="institutional-delegation form-span" data-organization-form>
+  <div class="delegation-heading">
+    <p class="eyebrow">ESTRUTURA ORGANIZACIONAL</p>
+    <h3>Delegação Institucional</h3>
+    <p>A posição, o nível e a cadeia hierárquica são determinados pela administração.</p>
+  </div>
+  <div class="org-assignment-fields">
+    <div class="field">
+      <span class="field-label">Cargo</span>
+      <input type="hidden" name="position_code" value="{{ form.get('position_code', '') }}" data-position-select>
+      <button class="selection-trigger" type="button" data-position-open aria-haspopup="dialog">
+        <span data-position-label>Selecionar cargo...</span><span aria-hidden="true">⌄</span>
+      </button>
+      <small class="field-error" data-position-error {% if not errors.get('position_code') %}hidden{% endif %}>{{ errors.get('position_code', '') }}</small>
+    </div>
+    <div class="field">
+      <span class="field-label">Nível atribuído pelo cargo</span>
+      <div class="assignment-level" data-level-display>Selecione um cargo</div>
+    </div>
+    <div class="field">
+      <label for="area_id">Área</label>
+      <select id="area_id" name="area_id" required data-area-select>
+        <option value="">Selecione a área</option>
+        {% for area in organization_options.areas %}
+        <option value="{{ area.id }}" {% if form.get('area_id')|string == area.id|string %}selected{% endif %}>{{ area.name }}</option>
+        {% endfor %}
+      </select>
+      {% if errors.get('area_id') %}<small class="field-error">{{ errors.area_id }}</small>{% endif %}
+    </div>
+    <div class="field">
+      <label for="team_id">Equipe</label>
+      <select id="team_id" name="team_id" required data-team-select>
+        <option value="">Selecione primeiro uma área</option>
+        {% for team in organization_options.teams %}
+        <option value="{{ team.id }}" data-area-id="{{ team.area_id }}" {% if form.get('team_id')|string == team.id|string %}selected{% endif %}>{{ team.name }}</option>
+        {% endfor %}
+      </select>
+      {% if errors.get('team_id') %}<small class="field-error">{{ errors.team_id }}</small>{% endif %}
+    </div>
+    <div class="field form-span" data-manager-fields>
+      <label for="manager_user_id">Superior hierárquico</label>
+      <select id="manager_user_id" name="manager_user_id" data-manager-select>
+        <option value="">Selecione o superior</option>
+        {% for supervisor in organization_options.supervisors %}
+        <option value="{{ supervisor.id }}" data-position-code="{{ supervisor.position_code }}" data-area-id="{{ supervisor.area_id or '' }}" data-team-id="{{ supervisor.team_id or '' }}" data-scope="{{ supervisor.position_scope }}" {% if form.get('manager_user_id')|string == supervisor.id|string %}selected{% endif %}>{{ supervisor.position_name }} — {{ supervisor.name }}{% if supervisor.matricula %} ({{ supervisor.matricula }}){% endif %}{% if supervisor.area_name %} · {{ supervisor.area_name }}{% endif %}</option>
+        {% endfor %}
+      </select>
+      {% if errors.get('manager_user_id') %}<small class="field-error">{{ errors.manager_user_id }}</small>{% endif %}
+    </div>
+  </div>
+  <dialog class="position-dialog" data-position-dialog aria-labelledby="position-dialog-title">
+    <div class="position-dialog-header">
+      <div><p class="eyebrow">DELEGAÇÃO INSTITUCIONAL</p><h4 id="position-dialog-title">Selecionar cargo</h4></div>
+      <button type="button" class="dialog-close" data-position-close aria-label="Fechar">×</button>
+    </div>
+    {% for group in organization_options.position_groups %}
+      {% if group.positions %}
+      <fieldset class="position-group">
+        <legend>{{ group.label }}</legend>
+        <div class="position-options">
+          {% for position in group.positions %}
+          <button type="button" class="position-option" data-position-code="{{ position.code }}" data-position-name="{{ position.name }}" data-level="{{ position.access_level }}" data-scope="{{ position.scope }}" data-supervisor-codes="{{ position.supervisor_codes|join(',') }}">
+            <span>{{ position.name }}</span>
+            <small>{{ 'Nível ' ~ position.access_level }}</small>
+          </button>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% endif %}
+    {% endfor %}
+  </dialog>
+</section>

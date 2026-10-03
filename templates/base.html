@@ -6,10 +6,75 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="description" content="Protótipo acadêmico de identificação biométrica e controle de acesso.">
   <title>{% block title %}{{ system_name }}{% endblock %}</title>
+  <script>
+    const savedTheme = localStorage.getItem("egide-theme");
+    const preferredTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    document.documentElement.dataset.theme = savedTheme || preferredTheme;
+  </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   {% block head %}{% endblock %}
 </head>
-<body>
+<body class="{% if current_user %}app-body--authenticated{% endif %}">
+  {% if current_user %}
+  <div class="app-shell">
+    <aside class="app-sidebar" id="app-sidebar">
+      <a class="brand" href="{{ url_for('auth.index') }}" aria-label="{{ system_name }} - início">
+        <span class="brand-symbol" aria-hidden="true">E</span>
+        <span><strong>{{ system_name }}</strong><small>IDENTIDADE E ACESSO</small></span>
+      </a>
+      <div class="sidebar-caption">AMBIENTE INSTITUCIONAL</div>
+      <nav class="sidebar-nav" aria-label="Navegação principal">
+        {% if current_user.is_admin %}
+          <span class="sidebar-group-label">GESTÃO</span>
+          <a class="sidebar-link {% if request.endpoint == 'admin.dashboard' %}is-active{% endif %}" href="{{ url_for('admin.dashboard') }}"><span>Painel administrativo</span></a>
+          <span class="sidebar-group-label">OPERAÇÕES</span>
+          <a class="sidebar-link {% if request.endpoint == 'admin.requests_list' or request.endpoint == 'admin.request_detail' %}is-active{% endif %}" href="{{ url_for('admin.requests_list') }}"><span>Solicitações</span></a>
+          <a class="sidebar-link {% if request.endpoint in ['admin.users', 'admin.user_detail', 'admin.edit_user'] %}is-active{% endif %}" href="{{ url_for('admin.users') }}"><span>Usuários e organograma</span></a>
+          <span class="sidebar-group-label">SEGURANÇA</span>
+          <a class="sidebar-link {% if request.endpoint == 'admin.access_logs' %}is-active{% endif %}" href="{{ url_for('admin.access_logs') }}"><span>Trilha de auditoria</span></a>
+        {% else %}
+          <span class="sidebar-group-label">ESPAÇO PESSOAL</span>
+          <a class="sidebar-link {% if request.endpoint == 'auth.dashboard' %}is-active{% endif %}" href="{{ url_for('auth.dashboard') }}"><span>Meu painel</span></a>
+          <span class="sidebar-group-label">CONSULTA</span>
+          <a class="sidebar-link {% if request.endpoint in ['auth.toxins', 'auth.toxin_detail'] %}is-active{% endif %}" href="{{ url_for('auth.toxins') }}"><span>Registros disponíveis</span></a>
+          <span class="sidebar-group-label">CONTA</span>
+          <a class="sidebar-link {% if request.endpoint == 'auth.profile' %}is-active{% endif %}" href="{{ url_for('auth.profile') }}"><span>Meu perfil</span></a>
+        {% endif %}
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="sidebar-account">
+          <span class="account-monogram" aria-hidden="true">{{ current_user.name[:1]|upper }}</span>
+          <span><strong>{{ current_user.name }}</strong><small>{{ current_user.role_label }}</small></span>
+        </div>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Alternar tema">
+          <span aria-hidden="true">◐</span><span data-theme-label>Tema: claro</span>
+        </button>
+        <form class="nav-logout" method="post" action="{{ url_for('auth.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="sidebar-signout" type="submit">Encerrar sessão</button>
+        </form>
+      </div>
+    </aside>
+    <button class="sidebar-backdrop" type="button" data-sidebar-close aria-label="Fechar navegação" hidden></button>
+    <div class="app-main">
+      <header class="app-topbar">
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="app-sidebar">Menu</button>
+        <div class="topbar-context">
+          <span>PROTOCOLO ÉGIDE</span>
+          <strong>
+            {% if request.endpoint == 'admin.dashboard' %}Painel administrativo
+            {% elif request.endpoint in ['admin.requests_list', 'admin.request_detail'] %}Solicitações
+            {% elif request.endpoint in ['admin.users', 'admin.user_detail', 'admin.edit_user'] %}Usuários
+            {% elif request.endpoint == 'admin.access_logs' %}Auditoria
+            {% elif request.endpoint == 'auth.dashboard' %}Meu painel
+            {% elif request.endpoint in ['auth.toxins', 'auth.toxin_detail'] %}Registros institucionais
+            {% elif request.endpoint == 'auth.profile' %}Meu perfil
+            {% else %}Verificação de identidade{% endif %}
+          </strong>
+        </div>
+        <span class="topbar-status"><i aria-hidden="true"></i>Sessão autenticada</span>
+      </header>
+  {% else %}
   <header class="site-header">
     <a class="brand" href="{{ url_for('auth.index') }}" aria-label="{{ system_name }} - início">
       <span class="brand-symbol" aria-hidden="true">E</span>
@@ -18,53 +83,67 @@
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav">Menu</button>
     <nav id="primary-nav" class="primary-nav" aria-label="Navegação principal">
       <a href="{{ url_for('auth.index') }}">Início</a>
-      {% if current_user %}
-        {% if current_user.is_admin %}
-          <a href="{{ url_for('admin.dashboard') }}">Administração</a>
-          <a href="{{ url_for('admin.requests_list') }}">Solicitações</a>
-          <a href="{{ url_for('admin.users') }}">Usuários</a>
-          <a href="{{ url_for('admin.access_logs') }}">Auditoria</a>
-        {% else %}
-          <a href="{{ url_for('auth.dashboard') }}">Meu painel</a>
-          <a href="{{ url_for('auth.toxins') }}">Registros</a>
-          <a href="{{ url_for('auth.profile') }}">Perfil</a>
-        {% endif %}
-        <form class="nav-logout" method="post" action="{{ url_for('auth.logout') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="nav-link-button" type="submit">Sair</button>
-        </form>
-      {% else %}
-        <a href="{{ url_for('auth.login') }}">Entrar</a>
-        <a class="nav-cta" href="{{ url_for('auth.register') }}">Solicitar acesso</a>
-      {% endif %}
+      <a href="{{ url_for('auth.login') }}">Entrar</a>
+      <a class="nav-cta" href="{{ url_for('auth.register') }}">Solicitar acesso</a>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Alternar tema">
+        <span aria-hidden="true">◐</span><span data-theme-label>Tema: claro</span>
+      </button>
     </nav>
   </header>
-
+  {% endif %}
   <main id="main-content">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="flash-stack" role="status" aria-live="polite">
-          {% for category, message in messages %}
-            <p class="alert alert--{{ category }}">{{ message }}</p>
-          {% endfor %}
+          {% for category, message in messages %}<p class="alert alert--{{ category }}">{{ message }}</p>{% endfor %}
         </div>
       {% endif %}
     {% endwith %}
     {% block content %}{% endblock %}
   </main>
-
   <footer class="site-footer">
     <div><strong>{{ system_name }}</strong><span>Ambiente demonstrativo · Dados e entidade fictícios</span></div>
     <p>Protótipo acadêmico. Não destinado a decisões reais de segurança nem ao armazenamento de dados de produção.</p>
   </footer>
+  {% if current_user %}</div></div>{% endif %}
   <script>
     const navToggle = document.querySelector(".nav-toggle");
     const primaryNav = document.getElementById("primary-nav");
+    const appSidebar = document.getElementById("app-sidebar");
+    const sidebarBackdrop = document.querySelector("[data-sidebar-close]");
     navToggle?.addEventListener("click", () => {
       const expanded = navToggle.getAttribute("aria-expanded") === "true";
       navToggle.setAttribute("aria-expanded", String(!expanded));
-      primaryNav.classList.toggle("is-open", !expanded);
+      if (primaryNav) primaryNav.classList.toggle("is-open", !expanded);
+      if (appSidebar) appSidebar.classList.toggle("is-open", !expanded);
+      if (sidebarBackdrop) sidebarBackdrop.hidden = expanded;
     });
+    sidebarBackdrop?.addEventListener("click", () => {
+      appSidebar?.classList.remove("is-open");
+      sidebarBackdrop.hidden = true;
+      navToggle?.setAttribute("aria-expanded", "false");
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && appSidebar?.classList.contains("is-open")) {
+        appSidebar.classList.remove("is-open");
+        if (sidebarBackdrop) sidebarBackdrop.hidden = true;
+        navToggle?.setAttribute("aria-expanded", "false");
+      }
+    });
+    const themeToggle = document.querySelector("[data-theme-toggle]");
+    const themeLabel = document.querySelector("[data-theme-label]");
+    themeToggle?.addEventListener("click", () => {
+      const dark = document.documentElement.dataset.theme !== "dark";
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+      localStorage.setItem("egide-theme", dark ? "dark" : "light");
+      themeToggle.setAttribute("aria-pressed", String(dark));
+      themeLabel.textContent = `Tema: ${dark ? "escuro" : "claro"}`;
+    });
+    if (themeToggle) {
+      const dark = document.documentElement.dataset.theme === "dark";
+      themeToggle.setAttribute("aria-pressed", String(dark));
+      themeLabel.textContent = `Tema: ${dark ? "escuro" : "claro"}`;
+    }
   </script>
   {% block scripts %}{% endblock %}
 </body>

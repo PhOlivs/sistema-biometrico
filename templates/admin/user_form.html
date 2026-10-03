@@ -3,21 +3,19 @@
 {% block content %}
 <section class="section-shell form-page">
   <a class="back-link" href="{{ url_for('admin.user_detail', user_id=user.id) }}">← Voltar ao perfil</a>
-  <div class="page-heading"><p class="eyebrow">ALTERAÇÃO ADMINISTRATIVA</p><h1>Editar perfil</h1><p>A matrícula {{ user.matricula }} é permanente. Toda mudança de nível fica registrada na auditoria.</p></div>
+  <div class="page-heading"><p class="eyebrow">ALTERAÇÃO ADMINISTRATIVA</p><h1>Editar perfil</h1><p>A matrícula {{ user.matricula }} é permanente. As alterações de delegação são validadas e registradas na auditoria.</p></div>
   <form id="user-edit-form" class="form-card form-grid" method="post" action="{{ url_for('admin.edit_user', user_id=user.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% if errors %}<div class="alert alert--error form-span">Revise os campos indicados.</div>{% endif %}
     <div class="field"><label for="name">Nome completo</label><input id="name" name="name" value="{{ form.get('name','') }}" required maxlength="120">{% if errors.get('name') %}<small class="field-error">{{ errors.name }}</small>{% endif %}</div>
     <div class="field"><label for="email">E-mail</label><input id="email" name="email" type="email" value="{{ form.get('email','') }}" required>{% if errors.get('email') %}<small class="field-error">{{ errors.email }}</small>{% endif %}</div>
     <div class="field"><label for="birth_date">Data de nascimento</label><input id="birth_date" name="birth_date" type="date" value="{{ form.get('birth_date','') }}">{% if errors.get('birth_date') %}<small class="field-error">{{ errors.birth_date }}</small>{% endif %}</div>
-    <div class="field"><label for="access_level">Nível de segurança</label><select id="access_level" name="access_level">{% for level in [1,2,3] %}<option value="{{ level }}" {% if form.get('access_level')|string == level|string %}selected{% endif %}>Nível {{ level }}</option>{% endfor %}</select>{% if errors.get('access_level') %}<small class="field-error">{{ errors.access_level }}</small>{% endif %}</div>
-    <div class="field"><label for="job_title">Cargo</label><input id="job_title" name="job_title" value="{{ form.get('job_title','') }}" required maxlength="120">{% if errors.get('job_title') %}<small class="field-error">{{ errors.job_title }}</small>{% endif %}</div>
-    <div class="field"><label for="division">Divisão</label><input id="division" name="division" value="{{ form.get('division','') }}" required maxlength="120">{% if errors.get('division') %}<small class="field-error">{{ errors.division }}</small>{% endif %}</div>
+    {% include "admin/_delegation_fields.html" %}
     <div class="field"><label for="cpf">Novo CPF <span class="optional">(opcional)</span></label><input id="cpf" name="cpf" inputmode="numeric" maxlength="14"><small>Deixe em branco para manter o valor atual.</small>{% if errors.get('cpf') %}<small class="field-error">{{ errors.cpf }}</small>{% endif %}</div>
     <div class="field"><label for="rg">Novo RG <span class="optional">(opcional)</span></label><input id="rg" name="rg" maxlength="32"><small>Deixe em branco para manter o valor atual.</small></div>
-    <div class="notice notice-warning form-span"><strong>Nível de acesso</strong><span>A alteração não modifica a matrícula. O novo nível passa a valer para as próximas autorizações.</span></div>
+    <div class="notice notice-warning form-span"><strong>Nível de acesso</strong><span>É determinado automaticamente pelo cargo selecionado. A alteração não modifica a matrícula e vale para as próximas autorizações.</span></div>
     <div class="form-actions form-span"><a class="button button-secondary" href="{{ url_for('admin.user_detail', user_id=user.id) }}">Cancelar</a><button class="button button-primary" type="submit">Salvar alterações</button></div>
   </form>
 </section>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/forms.js') }}" defer></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/forms.js') }}" defer></script><script src="{{ url_for('static', filename='js/organization.js') }}" defer></script>{% endblock %}

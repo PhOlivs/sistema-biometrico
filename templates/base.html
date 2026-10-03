@@ -28,7 +28,7 @@
           <span class="sidebar-group-label">GESTÃO</span>
           <a class="sidebar-link {% if request.endpoint == 'admin.dashboard' %}is-active{% endif %}" href="{{ url_for('admin.dashboard') }}"><span>Painel administrativo</span></a>
           <span class="sidebar-group-label">OPERAÇÕES</span>
-          <a class="sidebar-link {% if request.endpoint == 'admin.requests_list' or request.endpoint == 'admin.request_detail' %}is-active{% endif %}" href="{{ url_for('admin.requests_list') }}"><span>Solicitações</span></a>
+          <a class="sidebar-link {% if request.endpoint in ['admin.requests_list', 'admin.request_detail'] %}is-active{% endif %}" href="{{ url_for('admin.requests_list') }}"><span>Solicitações</span></a>
           <a class="sidebar-link {% if request.endpoint in ['admin.users', 'admin.user_detail', 'admin.edit_user'] %}is-active{% endif %}" href="{{ url_for('admin.users') }}"><span>Usuários e organograma</span></a>
           <span class="sidebar-group-label">SEGURANÇA</span>
           <a class="sidebar-link {% if request.endpoint == 'admin.access_logs' %}is-active{% endif %}" href="{{ url_for('admin.access_logs') }}"><span>Trilha de auditoria</span></a>
@@ -69,6 +69,9 @@
             {% elif request.endpoint == 'auth.dashboard' %}Meu painel
             {% elif request.endpoint in ['auth.toxins', 'auth.toxin_detail'] %}Registros institucionais
             {% elif request.endpoint == 'auth.profile' %}Meu perfil
+            {% elif request.endpoint == 'auth.login' %}Acesso institucional
+            {% elif request.endpoint == 'auth.register' %}Solicitação de credencial
+            {% elif request.endpoint in ['auth.registration_biometric', 'auth.authentication'] %}Registro biométrico
             {% else %}Verificação de identidade{% endif %}
           </strong>
         </div>

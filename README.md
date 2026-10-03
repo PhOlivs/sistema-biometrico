@@ -1,822 +1,289 @@
 # Protocolo Égide
 
-Protótipo acadêmico de identificação e autenticação biométrica facial, níveis de autorização e auditoria para registros inteiramente fictícios.
+Protótipo acadêmico em Flask para demonstrar cadastro institucional, autenticação facial, autorização hierárquica e auditoria. A organização e os registros exibidos são fictícios.
 
-A entidade, os níveis, os registros e o catálogo apresentados no sistema são cenográficos e não representam um órgão, instituição ou conteúdo real.
+> **Uso exclusivamente acadêmico.** Este projeto não está pronto para produção, não deve ser usado para decisões reais de acesso e não oferece garantia contra fraude, falsos aceites ou falsas rejeições. O desafio de movimento é experimental; não é um sistema anti-spoofing certificado. Use somente dados fictícios nas demonstrações.
 
-> **Limites:** este projeto não é apropriado para produção ou decisões reais de segurança. Não possui prova de vida, não foi submetido a avaliação independente e não oferece garantia contra fraude, falsos positivos ou falsos negativos. Não use dados pessoais reais nas demonstrações.
+## Conteúdo
+
+- [Requisitos](#requisitos)
+- [Instalação e execução](#instalação-e-execução)
+- [Primeiro administrador](#primeiro-administrador)
+- [Fluxos do sistema](#fluxos-do-sistema)
+- [Como funciona a biometria](#como-funciona-a-biometria)
+- [Avaliação experimental do limiar](#avaliação-experimental-do-limiar)
+- [Configuração e proteção de dados](#configuração-e-proteção-de-dados)
+- [Rotas principais](#rotas-principais)
+- [Arquitetura](#arquitetura)
+- [Testes](#testes)
+- [Limitações conhecidas](#limitações-conhecidas)
 
 ## Requisitos
 
 - Python 3.11 ou superior;
 - Git;
-- câmera e navegador compatível com `getUserMedia`;
-- Windows, Linux ou macOS;
-- os modelos YuNet e SFace do OpenCV Zoo para habilitar a biometria;
-- conexão com a internet durante a instalação das dependências e dos modelos.
+- câmera e navegador com suporte a `getUserMedia` (Chrome, Edge ou Firefox atualizados);
+- modelos YuNet e SFace do OpenCV Zoo para habilitar as capturas e verificações faciais;
+- conexão com a internet para instalar dependências e baixar os modelos.
 
-O projeto utiliza SQLite, portanto não é necessário instalar um servidor de banco de dados separado.
+O banco de dados é SQLite; não é necessário instalar um servidor de banco separado. Em desenvolvimento local, abra o sistema por `http://127.0.0.1:5000` ou `http://localhost:5000`, origens tratadas pelos navegadores como contexto seguro para acesso à câmera.
 
-### Navegador
+## Instalação e execução
 
-A captura biométrica utiliza a câmera do navegador por meio de `getUserMedia`.
+Os comandos de aplicação, testes e administração devem ser executados com a `.venv` deste projeto. Ative o ambiente no terminal antes de instalar pacotes ou executar o sistema.
 
-Como o sistema é executado localmente, `localhost`/`127.0.0.1` é tratado pelo navegador como contexto seguro para esse recurso.
-
-Recomenda-se utilizar uma versão atualizada de:
-
-- Google Chrome;
-- Microsoft Edge;
-- Mozilla Firefox.
-
----
-
-## 1. Clonar o projeto
-
-Clone o repositório e entre na pasta do projeto:
+### 1. Obter o projeto e criar a `.venv`
 
 ```bash
 git clone <URL-DO-REPOSITORIO>
 cd sistema-biometrico
 ```
 
-Substitua `<URL-DO-REPOSITORIO>` pela URL do repositório.
+Linux/macOS:
 
----
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
-# 2. Criar o ambiente virtual
-
-Todos os comandos Python da aplicação, dos testes e da administração devem utilizar o ambiente virtual `.venv`.
-
-## Windows — PowerShell
-
-Crie o ambiente virtual:
+Windows PowerShell:
 
 ```powershell
 py -3 -m venv .venv
-```
-
-Ative:
-
-```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-Depois de ativado, o terminal deverá mostrar algo semelhante a:
-
-```text
-(.venv) PS C:\...\sistema-biometrico>
-```
-
-Atualize o `pip` e instale as dependências:
-
-```powershell
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-### Se o PowerShell bloquear a ativação
-
-Em algumas instalações do Windows, a política de execução pode impedir scripts locais.
-
-Nesse caso, execute:
+Se o PowerShell bloquear a ativação, use uma política restrita ao usuário atual:
 
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-Feche e abra o PowerShell novamente e tente:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-Alternativamente, o projeto pode ser executado sem ativar o ambiente virtual, utilizando diretamente:
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-```
-
-e:
-
-```powershell
-.\.venv\Scripts\flask.exe --app app run --host 127.0.0.1 --port 5000
-```
-
----
-
-## Linux / macOS
-
-Crie o ambiente virtual:
-
-```bash
-python3 -m venv .venv
-```
-
-Ative:
-
-```bash
-source .venv/bin/activate
-```
-
-Atualize o `pip` e instale as dependências:
+Depois de ativar, confirme que o prompt mostra `(.venv)` e instale as dependências **dentro do ambiente**:
 
 ```bash
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Também é possível executar os comandos diretamente pelo ambiente virtual, sem ativá-lo:
+### 2. Instalar os modelos faciais
 
-```bash
-.venv/bin/python -m pip install -r requirements.txt
-```
-
----
-
-# 3. Instalar os modelos de biometria
-
-O Protocolo Égide utiliza:
-
-- YuNet para detecção facial;
-- SFace para extração e comparação de representações faciais.
-
-Os modelos são obtidos do [OpenCV Zoo](https://github.com/opencv/opencv_zoo).
-
-Antes de redistribuir os modelos junto com o projeto, confira a licença publicada para cada arquivo.
-
-Os arquivos devem ficar exatamente em:
+Crie `data/models/` na raiz do projeto e coloque nela estes arquivos:
 
 ```text
-data/
-└── models/
-    ├── face_detection_yunet_2023mar.onnx
-    └── face_recognition_sface_2021dec.onnx
+data/models/
+├── face_detection_yunet_2023mar.onnx
+└── face_recognition_sface_2021dec.onnx
 ```
 
-A pasta `data/models/` fica fora do controle de versão.
-
-## Windows
-
-Crie a pasta:
-
-```powershell
-New-Item -ItemType Directory -Force data\models
-```
-
-Depois baixe os dois modelos do OpenCV Zoo.
-
-### YuNet
-
-```powershell
-Invoke-WebRequest `
-  -Uri "https://github.com/opencv/opencv_zoo/raw/refs/heads/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx" `
-  -OutFile "data\models\face_detection_yunet_2023mar.onnx"
-```
-
-### SFace
-
-```powershell
-Invoke-WebRequest `
-  -Uri "https://github.com/opencv/opencv_zoo/raw/refs/heads/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx" `
-  -OutFile "data\models\face_recognition_sface_2021dec.onnx"
-```
-
-Você também pode baixar os arquivos manualmente pelo navegador e copiá-los para `data\models\`.
-
-## Linux / macOS
-
-Crie a pasta:
+Linux/macOS:
 
 ```bash
 mkdir -p data/models
-```
-
-Baixe os modelos:
-
-```bash
-curl -L https://github.com/opencv/opencv_zoo/raw/refs/heads/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx \
+curl -L "https://github.com/opencv/opencv_zoo/raw/refs/heads/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx" \
   -o data/models/face_detection_yunet_2023mar.onnx
-
-curl -L https://github.com/opencv/opencv_zoo/raw/refs/heads/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx \
+curl -L "https://github.com/opencv/opencv_zoo/raw/refs/heads/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx" \
   -o data/models/face_recognition_sface_2021dec.onnx
 ```
 
-### Nomes dos arquivos
-
-Os nomes precisam terminar exatamente em `.onnx`:
-
-```text
-face_detection_yunet_2023mar.onnx
-face_recognition_sface_2021dec.onnx
-```
-
-Alguns editores criam arquivos de backup com nomes como:
-
-```text
-face_recognition_sface_2021dec.onnx~
-```
-
-Esses arquivos **não são modelos válidos** e não são reconhecidos pela configuração padrão.
-
-Os modelos também precisam estar dentro de `data/models/` da mesma pasta do projeto usada para iniciar o Flask.
-
-Depois de adicionar ou renomear os modelos, atualize a página de captura. Se o servidor já estiver executando, reinicie-o caso necessário.
-
-Sem os modelos instalados, as páginas continuam disponíveis, mas as operações de captura e autenticação biométrica falham explicitamente e não concedem acesso.
-
----
-
-# 4. Verificar a instalação
-
-Com o ambiente virtual ativado, você pode verificar se as principais dependências estão instaladas:
-
-```bash
-python -m pip check
-```
-
-Também é possível verificar a versão do Python:
-
-### Windows
+Windows PowerShell:
 
 ```powershell
-python --version
+New-Item -ItemType Directory -Force data\models
+Invoke-WebRequest "https://github.com/opencv/opencv_zoo/raw/refs/heads/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx" -OutFile "data\models\face_detection_yunet_2023mar.onnx"
+Invoke-WebRequest "https://github.com/opencv/opencv_zoo/raw/refs/heads/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx" -OutFile "data\models\face_recognition_sface_2021dec.onnx"
 ```
 
-### Linux / macOS
+Confira os nomes e extensões: arquivos de backup, como `.onnx~`, não são carregados. Os modelos são fornecidos pelo [OpenCV Zoo](https://github.com/opencv/opencv_zoo); consulte as licenças e condições dos modelos antes de redistribuí-los. A pasta `data/models/` e os arquivos `.onnx` não devem ser enviados ao Git.
 
-```bash
-python --version
-```
+Sem os modelos, a interface continua disponível, mas as operações biométricas ficam indisponíveis e não concedem acesso.
 
-A versão deve ser Python 3.11 ou superior.
+### 3. Criar o primeiro administrador
 
----
-
-# 5. Inicializar o banco e executar o sistema
-
-O banco SQLite é criado automaticamente na primeira execução.
-
-O projeto utiliza:
-
-```text
-database/egide.db
-```
-
-Ao iniciar, o sistema inicializa o schema e aplica as migrações necessárias ao banco legado sem apagar os registros existentes.
-
-> Faça uma cópia de segurança de `database/egide.db` antes de atualizar uma instalação existente.
-
-## Windows
-
-Com o ambiente virtual ativado:
-
-```powershell
-flask --app app run --host 127.0.0.1 --port 5000
-```
-
-Ou, sem ativar o ambiente:
-
-```powershell
-.\.venv\Scripts\flask.exe --app app run --host 127.0.0.1 --port 5000
-```
-
-## Linux / macOS
-
-Com o ambiente virtual ativado:
-
-```bash
-flask --app app run --host 127.0.0.1 --port 5000
-```
-
-Ou, sem ativar:
-
-```bash
-.venv/bin/flask --app app run --host 127.0.0.1 --port 5000
-```
-
-Depois, abra no navegador:
-
-```text
-http://127.0.0.1:5000
-```
-
----
-
-# 6. Primeiro administrador
-
-Não existe administrador ou senha padrão.
-
-Com o servidor parado ou em outro terminal, execute:
-
-## Windows
-
-```powershell
-flask --app app provision-admin
-```
-
-Sem ativar o ambiente:
-
-```powershell
-.\.venv\Scripts\flask.exe --app app provision-admin
-```
-
-## Linux / macOS
+Com a `.venv` ativada, execute em um terminal:
 
 ```bash
 flask --app app provision-admin
 ```
 
-Sem ativar o ambiente:
+O comando solicita nome, e-mail institucional e senha. Use o domínio `@egíde.com.br` e uma senha com pelo menos 12 caracteres. Não existe senha ou conta administrativa padrão. O comando cria apenas o primeiro administrador e falha se já houver um administrador aprovado.
+
+A conta recebe matrícula gerada pelo sistema. No primeiro login, o administrador deverá concluir o cadastro facial antes de usar as telas protegidas.
+
+### 4. Iniciar o servidor local
+
+Com a `.venv` ainda ativada:
 
 ```bash
-.venv/bin/flask --app app provision-admin
+flask --app app run --host 127.0.0.1 --port 5000
 ```
 
-O comando solicita interativamente os dados necessários (use um e-mail `@egíde.com.br`) e cria uma única conta administrativa aprovada.
+Abra <http://127.0.0.1:5000>. A aplicação cria o SQLite em `database/egide.db` e inicializa o schema na primeira execução. Antes de atualizar um banco já existente, faça uma cópia de segurança.
 
-A conta possui:
+Para parar o servidor, pressione `Ctrl+C`. Se iniciar um segundo terminal para executar comandos do projeto, ative nele a mesma `.venv`.
 
-- senha armazenada por hash;
-- matrícula gerada pelo servidor;
-- papel administrativo;
-- nenhum perfil facial inicialmente cadastrado.
+## Primeiro acesso e administração
 
-No primeiro login com matrícula e senha, o administrador deverá completar as três capturas biométricas.
+- **Cadastro público:** a pessoa informa dados pessoais, e-mail institucional, senha e consentimento biométrico. Não escolhe cargo, nível, área, equipe, matrícula ou superior.
+- **Cadastro facial:** são solicitadas capturas frontal, direita e esquerda. A solicitação permanece pendente até revisão administrativa.
+- **Aprovação:** um administrador analisa a foto e o cadastro, seleciona cargo, área, equipe e superior na seção **Delegação Institucional**, e aprova ou rejeita. O nível é derivado do cargo e a matrícula é criada pelo sistema.
+- **Edição institucional:** administradores podem editar os dados e a delegação de usuários. O servidor valida novamente as relações de cargo, área, equipe e superior.
+- **Organograma:** em **Administração → Usuários → Organograma Institucional**, ou diretamente em `/admin/usuarios?view=chart`. A árvore usa as relações persistidas de superior e subordinado.
+- **Auditoria:** administradores consultam eventos e filtros em **Administração → Auditoria**. Os scores faciais também são registrados; são dados sensíveis e não representam uma probabilidade de identidade.
+- **Usuário aprovado:** após autenticar-se, pode consultar seu painel, perfil e registros fictícios permitidos pelo nível atribuído.
 
-O comando é recusado quando já existe um administrador aprovado.
+Áreas, equipes, cargos e relações hierárquicas iniciais são registros controlados no banco. O sistema filtra equipes pela área e valida no servidor que a combinação é válida. A interface administrativa de aprovação/edição não permite cadastrar novas áreas ou equipes.
 
----
+## Como funciona a biometria
 
-# 7. Chaves e execução fora do modo local
+### Cadastro
 
-O desenvolvimento local utiliza valores de conveniência. Esses valores não devem ser reutilizados em ambientes compartilhados.
+1. YuNet detecta o rosto e seus pontos de referência.
+2. O sistema exige um único rosto e verifica condições básicas de imagem, confiança e orientação.
+3. SFace alinha o rosto, extrai um embedding e o normaliza.
+4. São registrados três templates: frontal, direita e esquerda. A foto frontal é guardada separadamente para consulta administrativa; as capturas laterais não são mantidas como fotos.
 
-Para execução fora do modo local, configure:
+### Autenticação facial
+
+Depois de validar matrícula e senha, o servidor gera uma sequência aleatória de três movimentos para a direita ou esquerda. Para cada captura, o servidor verifica imagem, detecção de um único rosto e orientação aproximada pelos landmarks de YuNet. Com o desafio aceito, a captura frontal atual é convertida em embedding SFace e comparada com os três templates cadastrados pela similaridade do cosseno:
 
 ```text
-EGIDE_SECRET_KEY
-EGIDE_DATA_ENCRYPTION_KEY
-EGIDE_DEBUG=0
+S = max(
+    cosine(E_atual, E_frontal),
+    cosine(E_atual, E_direita),
+    cosine(E_atual, E_esquerda)
+)
+
+aceitar se S >= threshold
 ```
 
-A `EGIDE_DATA_ENCRYPTION_KEY` deve ser uma chave Fernet utilizada para criptografar CPF, RG e representações biométricas.
+O limiar padrão é `0.363`. O resultado, os três scores, o máximo e o limiar são gravados na auditoria. Um administrador recém-provisionado passa por uma configuração inicial dos três templates no primeiro login; os demais usuários precisam ter o perfil biométrico completo.
 
-Mantenha essas chaves fora do repositório.
+O desafio de movimento é uma **prova de presença experimental**. Ele dificulta aceitar uma única imagem estática sem resposta ao desafio, mas não prova resistência a vídeo, reprodução em tela, deepfake ou outros ataques. Não equivale a liveness/anti-spoofing certificado.
 
-> Perder ou trocar a chave de criptografia impossibilita a descriptografia dos dados protegidos por ela.
+## Avaliação experimental do limiar
 
-Também utilize HTTPS quando o sistema for executado fora do ambiente local, especialmente para habilitar o comportamento seguro dos cookies.
+O limiar `0.363` é um parâmetro experimental, não um valor universal. A ferramenta local calcula FAR (falsa aceitação), FRR (falsa rejeição) e uma estimativa discreta de EER a partir de scores rotulados.
 
-## Gerar uma chave Fernet
-
-### Windows
-
-```powershell
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-```
-
-### Linux / macOS
-
-```bash
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-```
-
----
-
-# 8. Configurações opcionais
-
-É possível substituir os valores padrão por variáveis de ambiente.
-
-```text
-EGIDE_YUNET_MODEL
-EGIDE_SFACE_MODEL
-EGIDE_FACE_THRESHOLD
-```
-
-Por exemplo:
-
-```text
-EGIDE_YUNET_MODEL=data/models/face_detection_yunet_2023mar.onnx
-EGIDE_SFACE_MODEL=data/models/face_recognition_sface_2021dec.onnx
-EGIDE_FACE_THRESHOLD=0.363
-```
-
-O limiar padrão é `0.363`.
-
-Esse valor deve ser validado em dados de avaliação apropriados ao contexto acadêmico. Ele não representa uma taxa de erro nem uma garantia de desempenho biométrico.
-
-### Avaliação experimental do threshold
-
-Os eventos de autenticação facial guardam os scores de similaridade dos modelos frontal, direita e esquerda, o máximo usado na decisão e o threshold aplicado. Consulte esses campos em **Administração → Auditoria → Detalhes**. São scores biométricos sensíveis; mantenha a auditoria protegida e não a use para inferir uma probabilidade de identidade.
-
-Para estimar FAR (taxa de falsa aceitação), FRR (taxa de falsa rejeição) e EER em um conjunto de avaliação com rótulos conhecidos, crie um CSV local com uma linha por comparação e as colunas `pair_type,score`. Use `genuine` para duas amostras da mesma pessoa e `impostor` para pessoas diferentes. Colete os exemplos com consentimento, separe pessoas/sessões de calibração e avaliação e não inclua imagens ou dados identificáveis no CSV:
+Prepare um CSV com scores de comparações genuínas (mesma pessoa) e impostoras (pessoas diferentes):
 
 ```csv
 pair_type,score
 genuine,0.421
 genuine,0.387
 impostor,0.291
+impostor,0.352
 ```
 
-Execute pela `.venv`:
+Execute dentro da `.venv`, a partir da raiz do repositório:
 
 ```bash
-.venv/bin/python -m scripts.evaluate_face_threshold dados_scores.csv --threshold 0.363
+python -m scripts.evaluate_face_threshold dados_scores.csv --threshold 0.363
 ```
 
-O relatório calcula FAR como a proporção de impostores com score acima ou igual ao threshold e FRR como a proporção de pares genuínos abaixo dele. Também mostra uma estimativa discreta de EER; ela não é uma certificação e o EER não é necessariamente o threshold adequado para o sistema. A escolha operacional deve considerar o custo relativo de falsos aceites e rejeições e ser avaliada em dados separados dos usados para calibrar.
+A regra usada é `score >= threshold` para aceitar; portanto, FAR é a fração dos impostores acima ou igual ao limiar, e FRR é a fração dos genuínos abaixo dele. O EER reportado é uma aproximação por busca em thresholds discretos, não uma certificação. Para uma avaliação acadêmica defensável, colete os scores com consentimento, não inclua imagens ou dados identificáveis no CSV, separe pessoas/sessões entre calibração e avaliação e descreva tamanho e limitações da amostra.
 
----
+## Configuração e proteção de dados
 
-# 9. Fluxos implementados
+### Variáveis de ambiente
 
-### Cadastro público
-Validação de nome, data, CPF de 11 dígitos (com ou sem máscara, sem validar dígitos verificadores), RG opcional, e-mail institucional `@egíde.com.br` e senha de pelo menos 12 caracteres com letras, números, maiúscula e símbolo; hash de senha; criptografia de CPF/RG; consentimento biométrico registrado com data e criação da conta em estado `PENDING`. Cargo, nível, área, equipe e superior não são solicitados nem aceitos do usuário; a posição fica pendente até a delegação administrativa.
+| Variável | Finalidade | Padrão |
+| --- | --- | --- |
+| `EGIDE_SECRET_KEY` | Assinatura das sessões Flask | Chave local de desenvolvimento |
+| `EGIDE_DATA_ENCRYPTION_KEY` | Chave Fernet para dados sensíveis | Derivada da chave Flask apenas no modo local |
+| `EGIDE_DEBUG` | Modo de desenvolvimento | `1` |
+| `EGIDE_YUNET_MODEL` | Caminho alternativo do modelo YuNet | `data/models/face_detection_yunet_2023mar.onnx` |
+| `EGIDE_SFACE_MODEL` | Caminho alternativo do modelo SFace | `data/models/face_recognition_sface_2021dec.onnx` |
+| `EGIDE_FACE_THRESHOLD` | Limiar de similaridade facial | `0.363` |
 
-### Biometria de cadastro
+Exemplo de geração de uma chave Fernet, executado dentro da `.venv`:
 
-Utiliza a câmera do navegador para três orientações guiadas.
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
 
-O processo inclui:
+Configure as variáveis no ambiente do processo antes de iniciar o servidor. Não armazene chaves no código ou no Git. Quando `EGIDE_DEBUG=0`, a aplicação exige `EGIDE_SECRET_KEY` e `EGIDE_DATA_ENCRYPTION_KEY`; use também HTTPS e um servidor WSGI apropriado antes de qualquer implantação. `flask run` é o servidor de desenvolvimento e não deve ser exposto à internet.
 
-- detecção de um único rosto;
-- verificações básicas de qualidade e posição;
-- alinhamento;
-- extração de embeddings com YuNet/SFace.
+Trocar ou perder a chave Fernet impede descriptografar os dados existentes. Planeje backup protegido e recuperação de chave; não troque a chave sem um procedimento de migração dos dados.
 
-As imagens das etapas lateral direita e esquerda são processadas em memória e descartadas. A imagem frontal é recortada em miniatura, criptografada e guardada separadamente para análise do administrador; o acesso à foto é protegido pela sessão administrativa. Os templates biométricos também são criptografados antes de persistidos.
+### Dados armazenados
 
-### Aprovação
+- senhas: hash `scrypt` do Werkzeug;
+- CPF e RG: criptografados com Fernet; o CPF também possui um HMAC para verificação de unicidade;
+- embeddings faciais e foto frontal: criptografados antes de persistir;
+- eventos de autenticação e ações administrativas: persistidos para auditoria;
+- banco: SQLite em `database/egide.db`, com chaves estrangeiras e modo WAL.
 
-A área administrativa exige uma sessão aprovada e o papel `ADMIN`.
+Sessões usam cookies `HttpOnly` e `SameSite=Lax`; com debug desativado, o cookie é configurado como `Secure`. Operações de alteração exigem CSRF. O consentimento biométrico é registrado no cadastro. Os dados são demonstração: defina retenção, remoção, backups e controle de acesso antes de usar qualquer dado real; este protótipo não oferece um processo institucional completo de gestão de dados biométricos.
 
-Uma solicitação só pode ser aprovada após a existência dos três templates faciais e da foto frontal. Na aprovação ou edição, a seção **Delegação Institucional** permite escolher cargos em modal agrupado por nível, selecionar área/equipe controladas e escolher um superior elegível. O nível é derivado do cargo no backend; não existe campo manual para defini-lo. Equipes são filtradas pela área, e superiores operacionais devem pertencer à mesma área e equipe. O serviço repete as validações no backend, verifica os subordinados atuais e rejeita ciclos antes de gravar. A matrícula correspondente (`Xnnn`, `Ynnn` ou `Znnn`) é gerada na mesma transação e apresentada ao administrador para que ele a forneça ao usuário pelo canal institucional.
+## Rotas principais
 
-### Estrutura organizacional
+| Uso | Rotas |
+| --- | --- |
+| Páginas públicas | `/`, `/cadastro`, `/cadastro/biometria`, `/cadastro/concluido` |
+| Autenticação | `/login`, `/autenticacao`, `POST /logout` |
+| Biometria | `POST /api/biometrics/enroll`, `POST /api/auth/face`, `POST /api/biometrics/admin-setup` |
+| Área do usuário | `/painel`, `/perfil`, `/toxinas`, `/toxinas/<id>` |
+| API de recursos | `GET /api/toxins`, `POST /api/access/<id>` |
+| Administração | `/admin/`, `/admin/solicitacoes`, `/admin/solicitacoes/<id>`, `/admin/usuarios`, `/admin/usuarios/<id>`, `/admin/acessos` |
+| API administrativa | `GET /admin/api/resumo`, `GET /admin/api/acessos` |
 
-As tabelas `organization_positions`, `organization_position_reports`, `organization_areas` e `organization_teams` guardam os cargos, relações permitidas, áreas e equipes. Cada usuário possui no máximo uma área, uma equipe e uma referência `manager_user_id` ao superior. A hierarquia e os níveis iniciais são semeados no banco; equipes futuras podem ser adicionadas como registros de `organization_teams` vinculados à respectiva área.
+Rotas administrativas verificam sessão e papel no servidor. APIs e formulários não substituem a validação de autorização feita pelo backend.
 
-Em **Administração → Usuários → Organograma Institucional**, a árvore é carregada dos relacionamentos persistidos e pode ser expandida ou recolhida por pessoa. Todo usuário aprovado recebe uma área e uma equipe de lotação, inclusive os cargos institucionais de direção. O escopo global desses cargos descreve sua abrangência hierárquica e permite subordinados de áreas diferentes; as relações entre cargos operacionais são validadas para impedir cruzamentos entre áreas.
-
-Rejeições exigem justificativa e as ações administrativas são auditadas.
-
-### Login
-
-O usuário informa matrícula e senha.
-
-A conta precisa estar no estado `APPROVED`. Antes do SFace, o servidor emite uma sequência aleatória de três movimentos direita/esquerda. YuNet verifica, em cada captura, um único rosto, a qualidade básica e a orientação pedida; só então a captura frontal é comparada com os três templates pelo cosseno. O resultado, os três scores, o máximo e o threshold são registrados na auditoria.
-
-Esse desafio é uma **prova de presença experimental**, não um mecanismo anti-spoofing certificado: capturas independentes não demonstram resistência a vídeos/manipulações sofisticados e não equivalem a uma solução biométrica de vivacidade.
-
-A sessão autenticada somente é criada após a confirmação necessária.
-
-A biometria identifica o usuário, mas não determina diretamente suas permissões.
-
-### Autorização
-
-Cada consulta protegida é verificada no backend utilizando a relação:
+## Arquitetura
 
 ```text
-nível do usuário >= nível do recurso
+app.py                    fábrica Flask, sessão, CSRF e CLI
+biometric/                detector YuNet e integração SFace
+config/                   configuração e caminhos
+database/                 schema SQLite, seed e migrações
+models/                   estruturas de usuário e organização
+routes/                   páginas e APIs públicas, de usuário e administrativas
+services/                 autenticação, biometria, organização, acesso e auditoria
+scripts/                  ferramentas locais, incluindo avaliação do limiar
+templates/                templates Jinja, incluindo áreas pública e administrativa
+static/css/               identidade visual, temas e responsividade
+static/js/                formulários, organização e captura de câmera
+tests/                    testes automatizados
+data/models/              arquivos ONNX locais (não versionados)
 ```
 
-Tentativas de acessar recursos acima do nível autorizado são negadas e registradas sem expor os detalhes protegidos.
+O tema claro/escuro é controlado no navegador e a preferência fica em `localStorage`. A navegação autenticada usa uma barra lateral responsiva; as páginas públicas mantêm navegação própria.
 
-### Administração e auditoria
+## Testes
 
-A área administrativa oferece:
-
-- pesquisa de usuários;
-- filtros;
-- alteração de nível sem troca de matrícula;
-- suspensão com motivo;
-- desativação lógica;
-- monitoramento;
-- filtros de eventos;
-- auditoria de ações administrativas.
-
-Os 15 registros do catálogo são fictícios. Suas descrições não fornecem dados químicos, instruções de síntese, aquisição ou uso.
-
----
-
-# 10. Arquitetura
-
-```text
-app.py
-├── routes/
-│   ├── páginas públicas
-│   ├── autenticação
-│   └── administração
-│
-├── services/
-│   ├── validação
-│   ├── autenticação
-│   ├── autorização
-│   ├── biometria
-│   └── auditoria
-│
-├── database/
-│   └── database.py
-│
-├── models/
-│   ├── identidade/status
-│   └── níveis
-│
-├── biometric/
-│   ├── YuNet
-│   └── SFace
-│
-├── templates/
-├── static/
-│   ├── css/
-│   └── js/
-│
-├── data/
-│   └── models/
-│
-└── tests/
-```
-
-### Principais responsabilidades
-
-`app.py` contém a fábrica Flask, sessão, proteção CSRF, tratamento de erros e o comando inicial de provisionamento.
-
-`routes/` contém as páginas e APIs públicas, de autenticação e administrativas.
-
-`services/` concentra validação, autenticação, autorização, biometria e auditoria.
-
-`database/database.py` contém o schema SQLite, índices e migração do banco legado.
-
-`models/` contém estruturas relacionadas à identidade, status e níveis.
-
-`biometric/` utiliza YuNet para detecção facial e SFace para alinhamento, extração e comparação.
-
-`templates/`, `static/css/` e `static/js/` contêm a interface HTML, CSS e JavaScript.
-
----
-
-# 11. Banco de dados e proteção dos dados
-
-O SQLite persiste:
-
-- usuários;
-- contadores transacionais de matrícula;
-- templates biométricos;
-- níveis;
-- registros fictícios;
-- eventos de acesso;
-- ações administrativas.
-
-Senhas utilizam o hash `scrypt` do Werkzeug.
-
-CPF, RG e embeddings biométricos utilizam Fernet.
-
-O CPF também possui um HMAC para permitir verificação de unicidade sem manter o valor em texto claro para essa finalidade.
-
-As sessões utilizam cookies `HTTP-only` e `SameSite=Lax`.
-
-Operações de alteração exigem token CSRF.
-
----
-
-# 12. Rotas principais
-
-| Área                   | Rotas                                                                                         |
-| ---------------------- | --------------------------------------------------------------------------------------------- |
-| Institucional/cadastro | `/`, `/cadastro`, `/cadastro/biometria`                                                       |
-| Autenticação           | `/login`, `/autenticacao`, `/logout`                                                          |
-| Biometria              | `POST /api/biometrics/enroll`, `POST /api/auth/face`                                          |
-| Usuário/recursos       | `/painel`, `/perfil`, `/toxinas`, `/toxinas/<id>`, `GET /api/toxins`, `POST /api/access/<id>` |
-| Administração          | `/admin/`, `/admin/solicitacoes`, `/admin/usuarios`, `/admin/acessos`                         |
-| APIs administrativas   | `GET /admin/api/resumo`, `GET /admin/api/acessos`                                             |
-
-Rotas de alteração exigem CSRF.
-
-As rotas administrativas verificam a sessão e o papel do usuário no servidor e não são disponibilizadas a usuários comuns.
-
----
-
-# 13. Testes e verificação
-
-Execute os comandos pelo ambiente virtual.
-
-## Windows
-
-Com o ambiente ativado:
-
-```powershell
-python -m pytest -q
-python -m compileall -q app.py biometric config database models routes services tests
-python -m pip check
-```
-
-Sem ativar:
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe -m compileall -q app.py biometric config database models routes services tests
-.\.venv\Scripts\python.exe -m pip check
-```
-
-## Linux / macOS
-
-Com o ambiente ativado:
+Ative a `.venv` e execute da raiz do repositório:
 
 ```bash
 python -m pytest -q
-python -m compileall -q app.py biometric config database models routes services tests
+python -m compileall -q app.py biometric config database models routes services tests scripts
 python -m pip check
+node --check static/js/forms.js
+node --check static/js/organization.js
+node --check static/js/camera.js
+git diff --check
 ```
 
-Sem ativar:
+Os testes automatizados cobrem validações, estados de usuário, matrícula, delegação e hierarquia, autenticação, auditoria, rotas administrativas, CSRF, autorização, persistência e métricas biométricas. Eles não substituem testes de câmera em dispositivos reais, avaliação de FAR/FRR com dados representativos, revisão independente de segurança ou certificação biométrica.
+
+## Limitações conhecidas
+
+- O threshold não foi calibrado com uma amostra representativa independente.
+- A prova de presença usa movimentos orientados por landmarks e não é liveness certificado.
+- CPF exige 11 dígitos, mas os dígitos verificadores não são validados.
+- O projeto não é adequado a dados reais ou uso em produção.
+- O catálogo e os níveis são fictícios; os registros não descrevem conteúdo operacional.
+- O catálogo de áreas/equipes é inicializado pelo banco; a interface atual não oferece gerenciamento desse catálogo.
+- Esta aplicação não documenta nem fornece uma política operacional de retenção, resposta a incidentes ou recuperação institucional de chaves.
+
+## Arquivos locais e Git
+
+Não versione `.venv/`, bancos SQLite locais, dados faciais, modelos ONNX ou segredos. O `.gitignore` do projeto já cobre os principais artefatos locais. Antes de compartilhar alterações, confira:
 
 ```bash
-.venv/bin/python -m pytest -q
-.venv/bin/python -m compileall -q app.py biometric config database models routes services tests
-.venv/bin/python -m pip check
+git status --short
 ```
-
-Os testes cobrem:
-
-- hierarquia de níveis;
-- migração do banco;
-- cadastro e matrículas;
-- aprovação;
-- auditoria;
-- proteção CSRF;
-- estados de conta;
-- login;
-- rotas administrativas;
-- bloqueio de recursos.
-
-O pipeline de visão computacional requer câmera, modelos e avaliação manual adicional.
-
-Os testes automatizados não devem ser interpretados como validação biométrica, prova de vida ou certificação de segurança.
-
----
-
-# 14. Arquivos que não devem ser versionados
-
-Os modelos ONNX, banco local, ambiente virtual e caches Python não devem ser enviados ao Git.
-
-Exemplo de `.gitignore`:
-
-```gitignore
-# Ambiente virtual
-.venv/
-
-# Cache Python
-__pycache__/
-*.pyc
-.pytest_cache/
-
-# Banco local
-*.db
-*.sqlite
-*.sqlite3
-
-# Modelos de visão computacional
-*.onnx
-*.onnx~
-
-# Arquivos de configuração local
-.env
-.env.*
-
-# Backups de editores
-*~
-```
-
-Se um modelo já tiver sido adicionado ao Git anteriormente, apenas adicionar `.onnx` ao `.gitignore` não é suficiente.
-
-Nesse caso, remova-o do índice sem apagar o arquivo local:
-
-```bash
-git rm --cached caminho/para/modelo.onnx
-```
-
-Depois:
-
-```bash
-git status
-```
-
----
-
-# 15. Estrutura esperada após a instalação
-
-A estrutura mínima esperada é:
-
-```text
-sistema-biometrico/
-│
-├── app.py
-├── requirements.txt
-├── README.md
-├── .gitignore
-│
-├── biometric/
-├── config/
-├── database/
-├── models/
-├── routes/
-├── services/
-├── templates/
-├── static/
-├── tests/
-│
-├── data/
-│   └── models/
-│       ├── face_detection_yunet_2023mar.onnx
-│       └── face_recognition_sface_2021dec.onnx
-│
-├── database/
-│   └── egide.db
-│
-└── .venv/
-```
-
-`database/egide.db` e `.venv/` são criados localmente e não devem ser versionados.
-
----
-
-# 16. Início rápido
-
-Para uma instalação nova:
-
-### Windows PowerShell
-
-```powershell
-git clone <URL-DO-REPOSITORIO>
-cd sistema-biometrico
-
-py -3 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-
-New-Item -ItemType Directory -Force data\models
-```
-
-Baixe os dois modelos para `data\models\`, depois:
-
-```powershell
-flask --app app run --host 127.0.0.1 --port 5000
-```
-
-Em outro terminal:
-
-```powershell
-.\.venv\Scripts\flask.exe --app app provision-admin
-```
-
-Acesse:
-
-```text
-http://127.0.0.1:5000
-```
-
-### Linux / macOS
-
-```bash
-git clone <URL-DO-REPOSITORIO>
-cd sistema-biometrico
-
-python3 -m venv .venv
-source .venv/bin/activate
-
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-
-mkdir -p data/models
-```
-
-Baixe os dois modelos para `data/models/` e execute:
-
-```bash
-flask --app app run --host 127.0.0.1 --port 5000
-```
-
-Em outro terminal:
-
-```bash
-.venv/bin/flask --app app provision-admin
-```
-
-Acesse:
-
-```text
-http://127.0.0.1:5000
-```
-
----
 
 ## Aviso acadêmico
 
-O Protocolo Égide é um protótipo acadêmico destinado exclusivamente a demonstração, estudo e desenvolvimento.
-
-A implementação não deve ser utilizada para controle de acesso real, identificação de pessoas, decisões administrativas, investigação, vigilância ou qualquer outra finalidade que possa produzir consequências reais para indivíduos.
-
-Não utilize dados pessoais, documentos ou imagens faciais reais durante as demonstrações.
+O Protocolo Égide destina-se somente a demonstração, estudo e desenvolvimento acadêmico. Não o utilize para identificação de pessoas, vigilância, investigação, controle de acesso real ou decisões que possam produzir consequências para indivíduos. Não utilize imagens faciais, documentos ou outros dados pessoais reais nas demonstrações.

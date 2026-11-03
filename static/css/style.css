@@ -289,6 +289,7 @@ p { color: var(--muted); }
 .record-count { margin: -10px 0 16px; color: var(--muted); font-size: 12px; }
 .record-card h2 { margin: 17px 0 8px; font-size: 18px; }
 .record-card p { flex: 1; margin-bottom: 13px; font-size: 12px; line-height: 1.65; }
+.record-card .record-card-origin { flex: initial; margin: -5px 0 10px; color: var(--muted); font-size: 11px; }
 .empty-state { padding: 45px 20px; border: 1px dashed #becbc3; border-radius: 7px; text-align: center; }
 .empty-state h2 { font-size: 20px; }
 .empty-state p { margin-bottom: 0; }
@@ -298,6 +299,8 @@ p { color: var(--muted); }
 .record-meta-grid div { min-width: 0; }
 .record-meta-grid dt { margin-bottom: 4px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
 .record-meta-grid dd { margin: 0; color: var(--ink); font-size: 13px; font-weight: 650; }
+.record-meta-grid--details { margin-top: 0; border-top: 0; }
+.record-meta-grid--details dd { font-weight: 500; line-height: 1.6; }
 .record-summary h2 { margin-bottom: 8px; font-size: 16px; }
 .record-summary p { margin: 0 0 22px; font-size: 14px; line-height: 1.7; }
 .back-link { display: inline-block; margin-bottom: 25px; color: var(--green-700); font-size: 12px; font-weight: 700; text-decoration: none; }

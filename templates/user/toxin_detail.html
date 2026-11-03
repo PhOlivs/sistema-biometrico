@@ -16,7 +16,15 @@
       <h2>Visão geral</h2>
       <p>{{ toxin.description }}</p>
     </section>
-    <div class="notice notice-neutral"><strong>Conteúdo exclusivamente cenográfico</strong><span>Esta ficha não descreve uma substância real e não fornece orientação de segurança, atendimento médico, manuseio ou descarte. Em uma emergência real, procure os serviços locais apropriados.</span></div>
+    <section class="record-summary">
+      <h2>Origem fictícia</h2>
+      <p>{{ toxin.origin }}</p>
+    </section>
+    <dl class="record-meta-grid record-meta-grid--details">
+      <div><dt>Aparência cenográfica</dt><dd>{{ toxin.appearance }}</dd></div>
+      <div><dt>Efeitos narrativos fictícios</dt><dd>{{ toxin.narrative_effects }}</dd></div>
+    </dl>
+    <div class="notice notice-neutral"><strong>Conteúdo exclusivamente cenográfico</strong><span>Esta ficha não descreve uma substância real e não fornece orientação de segurança, atendimento médico, manuseio ou descarte. Aparência e efeitos são elementos narrativos, não dados técnicos ou clínicos. Em uma emergência real, procure os serviços locais apropriados.</span></div>
   </article>
 </section>
 {% endblock %}

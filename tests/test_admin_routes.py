@@ -368,6 +368,7 @@ def test_toxin_access_is_server_enforced_and_audited(setup_app):
     assert "Verdo-A" in listing_html
     assert "TOX-1101" in listing_html
     assert "Acesso · Nível 1" in listing_html
+    assert "Desenvolvido em um cenário fictício de testes agrícolas controlados." in listing_html
     assert "Necrosil-2" not in listing_html
     detail = client.get(f"/toxinas/{toxin['id']}")
     detail_html = detail.get_data(as_text=True)
@@ -375,6 +376,10 @@ def test_toxin_access_is_server_enforced_and_audited(setup_app):
     assert "Código de identificação" in detail_html
     assert "Última atualização" in detail_html
     assert "24/10/2026" in detail_html
+    assert "Origem fictícia" in detail_html
+    assert "Aparência cenográfica" in detail_html
+    assert "Pó fino esverdeado (representação fictícia)." in detail_html
+    assert "Efeitos narrativos fictícios" in detail_html
 
     response = client.get(f"/toxinas/{restricted_toxin['id']}")
     assert response.status_code == 403

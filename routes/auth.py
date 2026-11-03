@@ -312,6 +312,8 @@ def api_toxins():
         {
             "id": row["id"], "code": row["code"], "name": row["name"],
             "access_level": row["access_level"],
+            "origin": row["origin"], "appearance": row["appearance"],
+            "narrative_effects": row["narrative_effects"],
         }
         for row in list_accessible(get_db(), g.current_user)
     ])
@@ -328,4 +330,6 @@ def api_toxin_access(toxin_id):
     return jsonify(
         id=toxin["id"], name=toxin["name"], description=toxin["description"],
         access_level=toxin["access_level"],
+        origin=toxin["origin"], appearance=toxin["appearance"],
+        narrative_effects=toxin["narrative_effects"],
     )

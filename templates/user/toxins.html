@@ -2,12 +2,13 @@
 {% block title %}Registros classificados · {{ system_name }}{% endblock %}
 {% block content %}
 <section class="section-shell dashboard-page">
-  <div class="page-heading"><p class="eyebrow">CATÁLOGO FICTÍCIO</p><h1>Registros disponíveis</h1><p>Exibidos somente os itens iguais ou inferiores ao seu nível de autorização.</p></div>
+  <div class="page-heading"><p class="eyebrow">CATÁLOGO FICTÍCIO</p><h1>Registros de substâncias</h1><p>Fichas cenográficas para demonstração. A lista respeita seu nível de autorização.</p></div>
   {% if toxins %}
+  <p class="record-count">{{ toxins|length }} {% if toxins|length == 1 %}registro disponível{% else %}registros disponíveis{% endif %}</p>
   <div class="record-grid">
     {% for toxin in toxins %}
     <article class="record-card">
-      <div class="record-card-top"><span class="record-code">{{ toxin.code }}</span><span class="level-badge level-{{ toxin.access_level }}">Nível {{ toxin.access_level }}</span></div>
+      <div class="record-card-top"><span class="record-code">{{ toxin.code }}</span><span class="level-badge level-{{ toxin.access_level }}">Acesso · Nível {{ toxin.access_level }}</span></div>
       <h2>{{ toxin.name }}</h2><p>{{ toxin.description }}</p>
       <a class="text-link" href="{{ url_for('auth.toxin_detail', toxin_id=toxin.id) }}">Abrir registro <span aria-hidden="true">→</span></a>
     </article>
@@ -16,6 +17,6 @@
   {% else %}
   <div class="empty-state"><h2>Nenhum registro disponível</h2><p>Não há itens classificados para seu nível no momento.</p></div>
   {% endif %}
-  <p class="fine-print">Todos os itens deste catálogo são fictícios e não contêm informação química operacional.</p>
+  <p class="fine-print">Todos os registros são fictícios e não contêm informações de manuseio, tratamento ou uso real.</p>
 </section>
 {% endblock %}

@@ -351,17 +351,38 @@ def test_toxin_access_is_server_enforced_and_audited(setup_app):
         "WHERE id = ?", (user.id,)
     )
     conn.commit()
-    toxin = conn.execute("SELECT id FROM toxins WHERE access_level = 3 LIMIT 1").fetchone()
+    toxin = conn.execute(
+        "SELECT id FROM toxins WHERE code = 'TOX-1101'"
+    ).fetchone()
+    restricted_toxin = conn.execute(
+        "SELECT id FROM toxins WHERE access_level = 3 LIMIT 1"
+    ).fetchone()
     conn.close()
     client = app.test_client()
     with client.session_transaction() as session:
         session["user_id"] = user.id
-    response = client.get(f"/toxinas/{toxin['id']}")
+
+    listing = client.get("/toxinas")
+    listing_html = listing.get_data(as_text=True)
+    assert listing.status_code == 200
+    assert "Verdo-A" in listing_html
+    assert "TOX-1101" in listing_html
+    assert "Acesso · Nível 1" in listing_html
+    assert "Necrosil-2" not in listing_html
+    detail = client.get(f"/toxinas/{toxin['id']}")
+    detail_html = detail.get_data(as_text=True)
+    assert detail.status_code == 200
+    assert "Código de identificação" in detail_html
+    assert "Última atualização" in detail_html
+    assert "24/10/2026" in detail_html
+
+    response = client.get(f"/toxinas/{restricted_toxin['id']}")
     assert response.status_code == 403
     assert "Acesso negado" in response.get_data(as_text=True)
     conn = database.connect(path)
     event = conn.execute(
-        "SELECT event, result FROM access_logs WHERE resource_id = ?", (toxin["id"],)
+        "SELECT event, result FROM access_logs WHERE resource_id = ?",
+        (restricted_toxin["id"],)
     ).fetchone()
     assert (event["event"], event["result"]) == ("SUPERIOR_LEVEL_ATTEMPT", "DENIED")
     conn.close()

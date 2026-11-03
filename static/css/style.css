@@ -286,6 +286,7 @@ p { color: var(--muted); }
 .record-card { display: flex; flex-direction: column; padding: 20px; }
 .record-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .record-code { color: var(--muted); font-family: var(--font-mono); font-size: 10px; }
+.record-count { margin: -10px 0 16px; color: var(--muted); font-size: 12px; }
 .record-card h2 { margin: 17px 0 8px; font-size: 18px; }
 .record-card p { flex: 1; margin-bottom: 13px; font-size: 12px; line-height: 1.65; }
 .empty-state { padding: 45px 20px; border: 1px dashed #becbc3; border-radius: 7px; text-align: center; }
@@ -293,7 +294,12 @@ p { color: var(--muted); }
 .empty-state p { margin-bottom: 0; }
 .record-detail { max-width: 800px; margin-top: 24px; }
 .record-detail h1 { margin: 0; font-family: Georgia, serif; font-size: 38px; font-weight: 500; }
-.record-detail > p:not(.eyebrow) { margin: 24px 0; font-size: 15px; }
+.record-meta-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px 24px; margin: 26px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 19px 0; }
+.record-meta-grid div { min-width: 0; }
+.record-meta-grid dt { margin-bottom: 4px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.record-meta-grid dd { margin: 0; color: var(--ink); font-size: 13px; font-weight: 650; }
+.record-summary h2 { margin-bottom: 8px; font-size: 16px; }
+.record-summary p { margin: 0 0 22px; font-size: 14px; line-height: 1.7; }
 .back-link { display: inline-block; margin-bottom: 25px; color: var(--green-700); font-size: 12px; font-weight: 700; text-decoration: none; }
 
 .admin-overview { display: grid; grid-template-columns: 1.1fr .9fr; gap: 14px; margin-top: 17px; }

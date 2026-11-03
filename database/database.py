@@ -160,21 +160,21 @@ _LEGACY_COLUMNS = {
 _PREFIXES = {1: "X", 2: "Y", 3: "Z"}
 _MATRICULA_PATTERN = re.compile(r"^[XYZ](\d{3,})$")
 _TOXINS = (
-    (1, "Aster-01", "Registro cenográfico de acesso geral; conteúdo fictício e não operacional."),
-    (1, "Aster-02", "Ficha acadêmica fictícia para demonstração de autorização."),
-    (1, "Aster-03", "Registro demonstrativo sem dados químicos reais."),
-    (1, "Aster-04", "Artefato de catálogo cenográfico para testes de interface."),
-    (1, "Aster-05", "Registro fictício destinado a demonstrar consultas autorizadas."),
-    (2, "Cobalto-01", "Dossiê de cenário fictício; não contém instruções ou dados de produção."),
-    (2, "Cobalto-02", "Registro acadêmico sintético de classificação intermediária."),
-    (2, "Cobalto-03", "Ficha cenográfica para validar filtros e auditoria."),
-    (2, "Cobalto-04", "Descrição deliberadamente não acionável para apresentação acadêmica."),
-    (2, "Cobalto-05", "Registro fictício para demonstração do controle hierárquico."),
-    (3, "Orion-01", "Dossiê cenográfico de acesso superior, sem informação técnica real."),
-    (3, "Orion-02", "Registro fictício para demonstrar permissões de nível máximo."),
-    (3, "Orion-03", "Ficha acadêmica sintética; não representa substância existente."),
-    (3, "Orion-04", "Conteúdo demonstrativo sem dados de aquisição, síntese ou uso."),
-    (3, "Orion-05", "Registro inteiramente fictício para apresentação do protótipo."),
+    (1, "TOX-1101", "Verdo-A", "Composto vegetal fictício de um cenário de testes agrícolas controlados.", "ASTER01"),
+    (1, "TOX-1102", "Hidro-L", "Resíduo químico fictício de processos industriais leves.", "ASTER02"),
+    (1, "TOX-1103", "Agri-Tox", "Pó fictício associado a um cenário de controle de pragas.", "ASTER03"),
+    (1, "TOX-1104", "Esporina-1", "Esporos fictícios de um cenário acadêmico sobre materiais orgânicos.", "ASTER04"),
+    (1, "TOX-1105", "Bactox-1", "Resíduo bacteriano fictício de um cenário de calibração laboratorial.", "ASTER05"),
+    (2, "TOX-2101", "Necrosil-2", "Composto químico fictício de um cenário de testes de revestimentos industriais.", "COBALTO01"),
+    (2, "TOX-2102", "Cardionil-B", "Substância experimental fictícia de um cenário de laboratório.", "COBALTO02"),
+    (2, "TOX-2103", "Amnesina-2", "Agente volátil inteiramente fictício de um cenário acadêmico.", "COBALTO03"),
+    (2, "TOX-2104", "Hemoliz-C", "Derivado químico fictício de um cenário de pesquisa biomédica.", "COBALTO04"),
+    (2, "TOX-2105", "Pyrotox-2", "Material sintético fictício de um cenário de ensaios térmicos.", "COBALTO05"),
+    (3, "TOX-3101", "Vesperina-K", "Composto sintético fictício de um cenário agrícola de alto risco narrativo.", "ORION01"),
+    (3, "TOX-3102", "Omnimort-9", "Agente biológico fictício de um cenário de risco elevado.", "ORION02"),
+    (3, "TOX-3103", "Bio-Destruktor", "Substância corrosiva fictícia de um cenário de fantasia científica.", "ORION03"),
+    (3, "TOX-3104", "Furia-X", "Agente inteiramente fictício de um cenário narrativo.", "ORION04"),
+    (3, "TOX-3105", "Necroflux-3", "Composto sintético fictício de um cenário de pesquisa avançada.", "ORION05"),
 )
 
 
@@ -268,11 +268,18 @@ def init_db(conn: sqlite3.Connection) -> None:
         ((1,), (2,), (3,)),
     )
     _migrate_legacy_users(conn, migrate_status, migrate_level_assignment)
-    conn.executemany(
-        "INSERT OR IGNORE INTO toxins(code, name, access_level, description) VALUES (?, ?, ?, ?)",
-        ((f"{name.upper().replace('-', '')}", name, level, description)
-         for level, name, description in _TOXINS),
-    )
+    for level, code, name, description, legacy_code in _TOXINS:
+        migrated = conn.execute(
+            "UPDATE toxins SET code = ?, name = ?, access_level = ?, description = ? "
+            "WHERE code = ?",
+            (code, name, level, description, legacy_code),
+        )
+        if not migrated.rowcount:
+            conn.execute(
+                "INSERT OR IGNORE INTO toxins(code, name, access_level, description) "
+                "VALUES (?, ?, ?, ?)",
+                (code, name, level, description),
+            )
     conn.commit()
 
 

@@ -5,9 +5,18 @@
   <a class="back-link" href="{{ url_for('auth.toxins') }}">← Voltar aos registros</a>
   <article class="record-detail panel-card">
     <p class="eyebrow">REGISTRO CENOGRÁFICO · {{ toxin.code }}</p>
-    <div class="record-card-top"><h1>{{ toxin.name }}</h1><span class="level-badge level-{{ toxin.access_level }}">Nível {{ toxin.access_level }}</span></div>
-    <p>{{ toxin.description }}</p>
-    <div class="notice notice-neutral"><strong>Conteúdo seguro para demonstração</strong><span>Este registro é totalmente fictício e não descreve substâncias reais, síntese, aquisição ou utilização.</span></div>
+    <div class="record-card-top"><h1>{{ toxin.name }}</h1><span class="level-badge level-{{ toxin.access_level }}">Acesso · Nível {{ toxin.access_level }}</span></div>
+    <dl class="record-meta-grid">
+      <div><dt>Código de identificação</dt><dd>{{ toxin.code }}</dd></div>
+      <div><dt>Classificação fictícia</dt><dd>Nível {{ toxin.access_level }}</dd></div>
+      <div><dt>Status do arquivo</dt><dd>Ativo / Controlado</dd></div>
+      <div><dt>Última atualização</dt><dd>24/10/2026</dd></div>
+    </dl>
+    <section class="record-summary">
+      <h2>Visão geral</h2>
+      <p>{{ toxin.description }}</p>
+    </section>
+    <div class="notice notice-neutral"><strong>Conteúdo exclusivamente cenográfico</strong><span>Esta ficha não descreve uma substância real e não fornece orientação de segurança, atendimento médico, manuseio ou descarte. Em uma emergência real, procure os serviços locais apropriados.</span></div>
   </article>
 </section>
 {% endblock %}

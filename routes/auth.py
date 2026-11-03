@@ -311,6 +311,7 @@ def api_toxins():
     return jsonify([
         {
             "id": row["id"], "code": row["code"], "name": row["name"],
+            "reference_code": row["reference_code"],
             "access_level": row["access_level"],
             "origin": row["origin"], "appearance": row["appearance"],
             "narrative_effects": row["narrative_effects"],
@@ -329,6 +330,7 @@ def api_toxin_access(toxin_id):
         return jsonify(error="Autorização insuficiente.", required_level=toxin["access_level"]), 403
     return jsonify(
         id=toxin["id"], name=toxin["name"], description=toxin["description"],
+        reference_code=toxin["reference_code"],
         access_level=toxin["access_level"],
         origin=toxin["origin"], appearance=toxin["appearance"],
         narrative_effects=toxin["narrative_effects"],

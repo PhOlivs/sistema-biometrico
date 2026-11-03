@@ -3,28 +3,62 @@
 {% block content %}
 <section class="section-shell dashboard-page">
   <a class="back-link" href="{{ url_for('auth.toxins') }}">← Voltar aos registros</a>
-  <article class="record-detail panel-card">
-    <p class="eyebrow">REGISTRO CENOGRÁFICO · {{ toxin.code }}</p>
-    <div class="record-card-top"><h1>{{ toxin.name }}</h1><span class="level-badge level-{{ toxin.access_level }}">Acesso · Nível {{ toxin.access_level }}</span></div>
+
+  <article class="record-detail panel-card toxin-detail">
+    <p class="eyebrow">REGISTRO DE SUBSTÂNCIA: {{ toxin.reference_code }} ({{ toxin.name }})</p>
+
+    <div class="record-card-top toxin-detail-header">
+      <h1>{{ toxin.name }}</h1>
+      <span class="level-badge level-{{ toxin.access_level }}">Acesso · Nível {{ toxin.access_level }}</span>
+    </div>
+
     <dl class="record-meta-grid">
-      <div><dt>Código de identificação</dt><dd>{{ toxin.code }}</dd></div>
-      <div><dt>Classificação fictícia</dt><dd>Nível {{ toxin.access_level }}</dd></div>
-      <div><dt>Status do arquivo</dt><dd>Ativo / Controlado</dd></div>
-      <div><dt>Última atualização</dt><dd>24/10/2026</dd></div>
+      <div>
+        <dt>Código de identificação</dt>
+        <dd class="monospace">{{ toxin.code }}</dd>
+      </div>
+      <div>
+        <dt>Referência do documento</dt>
+        <dd>{{ toxin.reference_code }}</dd>
+      </div>
+      <div>
+        <dt>Classificação de risco</dt>
+        <dd>Nível {{ toxin.access_level }}</dd>
+      </div>
+      <div>
+        <dt>Status do arquivo</dt>
+        <dd>Ativo / Controlado</dd>
+      </div>
+      <div>
+        <dt>Última atualização</dt>
+        <dd>24/10/2026</dd>
+      </div>
     </dl>
-    <section class="record-summary">
-      <h2>Visão geral</h2>
-      <p>{{ toxin.description }}</p>
+
+    <section class="toxin-section">
+      <h2>1. Visão Geral e Origem</h2>
+      <p class="toxin-body">{{ toxin.origin }}</p>
     </section>
-    <section class="record-summary">
-      <h2>Origem fictícia</h2>
-      <p>{{ toxin.origin }}</p>
+
+    <section class="toxin-section">
+      <h2>2. Propriedades Físico-Químicas</h2>
+      <div class="toxin-props">{{ toxin.appearance }}</div>
     </section>
-    <dl class="record-meta-grid record-meta-grid--details">
-      <div><dt>Aparência cenográfica</dt><dd>{{ toxin.appearance }}</dd></div>
-      <div><dt>Efeitos narrativos fictícios</dt><dd>{{ toxin.narrative_effects }}</dd></div>
-    </dl>
-    <div class="notice notice-neutral"><strong>Conteúdo exclusivamente cenográfico</strong><span>Esta ficha não descreve uma substância real e não fornece orientação de segurança, atendimento médico, manuseio ou descarte. Aparência e efeitos são elementos narrativos, não dados técnicos ou clínicos. Em uma emergência real, procure os serviços locais apropriados.</span></div>
+
+    <section class="toxin-section">
+      <h2>3. Manifestação Clínica, Protocolos e Tratamento</h2>
+      <div class="toxin-narrative">{{ toxin.narrative_effects }}</div>
+    </section>
+
+    <div class="notice notice-neutral toxin-disclaimer">
+      <strong>Conteúdo exclusivamente cenográfico</strong>
+      <span>
+        Esta ficha não descreve uma substância real e não fornece orientação de segurança,
+        atendimento médico, manuseio ou descarte. Aparência, efeitos, protocolos e tratamentos
+        são elementos narrativos fictícios, não dados técnicos ou clínicos.
+        Em uma emergência real, procure os serviços locais apropriados.
+      </span>
+    </div>
   </article>
 </section>
 {% endblock %}

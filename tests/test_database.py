@@ -57,7 +57,8 @@ def test_new_database_has_domain_tables_and_fifteen_fictional_records(tmp_path):
     ]
     assert conn.execute(
         "SELECT COUNT(*) FROM toxins "
-        "WHERE origin = '' OR appearance = '' OR narrative_effects = ''"
+        "WHERE reference_code = '' OR origin = '' OR appearance = '' "
+        "OR narrative_effects = ''"
     ).fetchone()[0] == 0
     assert conn.execute("SELECT COUNT(*) FROM organization_areas").fetchone()[0] == 5
     assert conn.execute("SELECT COUNT(*) FROM organization_teams").fetchone()[0] == 5
@@ -130,9 +131,10 @@ def test_init_db_migrates_placeholder_toxin_records_without_replacing_ids(tmp_pa
     database.init_db(conn)
 
     migrated = conn.execute(
-        "SELECT id, code, name FROM toxins WHERE code = 'TOX-1101'"
+        "SELECT id, code, reference_code, name FROM toxins WHERE code = 'TOX-1101'"
     ).fetchone()
     assert migrated["id"] == original_id
+    assert migrated["reference_code"] == "VER-01"
     assert migrated["name"] == "Verdo-A"
     assert conn.execute("SELECT COUNT(*) FROM toxins").fetchone()[0] == 15
     conn.close()
@@ -165,8 +167,10 @@ def test_init_db_adds_toxin_metadata_to_existing_schema(tmp_path):
     database.init_db(conn)
 
     migrated = conn.execute(
-        "SELECT origin, appearance, narrative_effects FROM toxins WHERE code = 'TOX-1101'"
+        "SELECT reference_code, origin, appearance, narrative_effects "
+        "FROM toxins WHERE code = 'TOX-1101'"
     ).fetchone()
+    assert migrated["reference_code"] == "VER-01"
     assert migrated["origin"]
     assert migrated["appearance"]
     assert migrated["narrative_effects"]

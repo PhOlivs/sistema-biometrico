@@ -367,8 +367,9 @@ def test_toxin_access_is_server_enforced_and_audited(setup_app):
     assert listing.status_code == 200
     assert "Verdo-A" in listing_html
     assert "TOX-1101" in listing_html
+    assert "VER-01" in listing_html
     assert "Acesso · Nível 1" in listing_html
-    assert "Desenvolvido em um cenário fictício de testes agrícolas controlados." in listing_html
+    assert "A Verdo-A é um composto extraído de plantas modificadas, desenvolvido originalmente para testes agrícolas controlados." in listing_html
     assert "Necrosil-2" not in listing_html
     detail = client.get(f"/toxinas/{toxin['id']}")
     detail_html = detail.get_data(as_text=True)
@@ -376,7 +377,9 @@ def test_toxin_access_is_server_enforced_and_audited(setup_app):
     assert "Código de identificação" in detail_html
     assert "Última atualização" in detail_html
     assert "24/10/2026" in detail_html
-    assert "Origem fictícia" in detail_html
+    assert "REGISTRO DE SUBSTÂNCIA: VER-01 (Verdo-A)" in detail_html
+    assert "1. Visão Geral e Origem" in detail_html
+    assert "A Verdo-A é um composto extraído de plantas modificadas, desenvolvido originalmente para testes agrícolas controlados." in detail_html
     assert "Aparência cenográfica" in detail_html
     assert "Pó fino esverdeado (representação fictícia)." in detail_html
     assert "Efeitos narrativos fictícios" in detail_html
